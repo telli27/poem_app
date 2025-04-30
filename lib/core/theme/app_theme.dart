@@ -2,27 +2,39 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const primaryColor = Color(0xFF3F51B5); // Indigo
-  static const secondaryColor = Color(0xFF673AB7); // Deep Purple
-  static const accentColor = Color(0xFFE91E63); // Pink
-  static const backgroundColor = Color(0xFFF8F9FA); // Light Gray
-  static const surfaceColor = Colors.white;
-  static const errorColor = Color(0xFFD32F2F); // Red
+  // Koyu tema renkleri
+  static const darkPrimaryColor = Color(0xFF3F51B5); // Indigo
+  static const darkSecondaryColor = Color(0xFF673AB7); // Deep Purple
+  static const darkAccentColor = Color(0xFFE57373); // Pink/Salmon
+  static const darkBackgroundColor = Color(0xFF1E1E2C); // Koyu lacivert
+  static const darkSurfaceColor = Color(0xFF2D2D3F); // Biraz daha açık lacivert
+  static const darkErrorColor = Color(0xFFD32F2F); // Red
+
+  // Açık tema renkleri
+  static const lightPrimaryColor = Color(0xFF4A5BCC); // Daha açık Indigo
+  static const lightSecondaryColor = Color(0xFF7E57C2); // Daha açık Deep Purple
+  static const lightAccentColor = Color(0xFFE57373); // Aynı Pink/Salmon
+  static const lightBackgroundColor = Colors.white; // Düz beyaz
+  static const lightSurfaceColor = Color(0xFFF8F9FA); // Çok açık gri
+  static const lightCardColor = Colors.white;
+  static const lightErrorColor = Color(0xFFD32F2F); // Red
 
   static final lightTheme = ThemeData(
     useMaterial3: true,
+    brightness: Brightness.light,
     colorScheme: ColorScheme.light(
-      primary: primaryColor,
-      secondary: secondaryColor,
-      tertiary: accentColor,
-      background: backgroundColor,
-      surface: surfaceColor,
-      error: errorColor,
+      primary: lightPrimaryColor,
+      secondary: lightSecondaryColor,
+      tertiary: lightAccentColor,
+      background: lightBackgroundColor,
+      surface: lightSurfaceColor,
+      error: lightErrorColor,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onBackground: Colors.black87,
       onSurface: Colors.black87,
     ),
+    scaffoldBackgroundColor: lightBackgroundColor,
     textTheme: GoogleFonts.nunitoTextTheme().copyWith(
       displayLarge: GoogleFonts.playfairDisplay(
         fontSize: 32,
@@ -71,7 +83,7 @@ class AppTheme {
       ),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: primaryColor,
+      backgroundColor: lightPrimaryColor,
       elevation: 0,
       centerTitle: true,
       iconTheme: IconThemeData(color: Colors.white),
@@ -87,11 +99,11 @@ class AppTheme {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      color: surfaceColor,
+      color: lightCardColor,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
+        backgroundColor: lightPrimaryColor,
         foregroundColor: Colors.white,
         elevation: 2,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -101,8 +113,9 @@ class AppTheme {
       ),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: primaryColor.withOpacity(0.1),
-      labelStyle: TextStyle(color: primaryColor, fontWeight: FontWeight.w500),
+      backgroundColor: lightPrimaryColor.withOpacity(0.1),
+      labelStyle:
+          TextStyle(color: lightPrimaryColor, fontWeight: FontWeight.w500),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
@@ -110,7 +123,7 @@ class AppTheme {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: backgroundColor,
+      fillColor: lightBackgroundColor,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: Colors.grey.shade300),
@@ -121,7 +134,7 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: primaryColor, width: 2),
+        borderSide: const BorderSide(color: lightPrimaryColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
@@ -129,18 +142,20 @@ class AppTheme {
 
   static final darkTheme = ThemeData(
     useMaterial3: true,
+    brightness: Brightness.dark,
     colorScheme: ColorScheme.dark(
-      primary: primaryColor,
-      secondary: secondaryColor,
-      tertiary: accentColor,
-      background: const Color(0xFF121212),
-      surface: const Color(0xFF1E1E1E),
-      error: errorColor,
+      primary: darkPrimaryColor,
+      secondary: darkSecondaryColor,
+      tertiary: darkAccentColor,
+      background: darkBackgroundColor,
+      surface: darkSurfaceColor,
+      error: darkErrorColor,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onBackground: Colors.white,
       onSurface: Colors.white,
     ),
+    scaffoldBackgroundColor: darkBackgroundColor,
     textTheme: GoogleFonts.nunitoTextTheme(ThemeData.dark().textTheme).copyWith(
       displayLarge: GoogleFonts.playfairDisplay(
         fontSize: 32,
@@ -189,7 +204,7 @@ class AppTheme {
       ),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: primaryColor,
+      backgroundColor: darkPrimaryColor,
       elevation: 0,
       centerTitle: true,
       iconTheme: IconThemeData(color: Colors.white),
@@ -205,11 +220,11 @@ class AppTheme {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      color: const Color(0xFF1E1E1E),
+      color: darkSurfaceColor,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
+        backgroundColor: darkPrimaryColor,
         foregroundColor: Colors.white,
         elevation: 2,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -219,7 +234,7 @@ class AppTheme {
       ),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: primaryColor.withOpacity(0.3),
+      backgroundColor: darkPrimaryColor.withOpacity(0.3),
       labelStyle:
           const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -240,7 +255,7 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: primaryColor, width: 2),
+        borderSide: const BorderSide(color: darkPrimaryColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),

@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:poemapp/features/home/providers/poet_provider.dart';
+import 'package:poemapp/features/home/providers/poem_provider.dart';
 import 'package:poemapp/features/home/presentation/widgets/poet_card.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:poemapp/features/poet/presentation/pages/poet_detail_page.dart';
+import 'package:poemapp/features/poem/presentation/pages/poem_detail_page.dart';
+import 'package:poemapp/core/theme/theme_provider.dart';
 import 'dart:ui';
+
+// Seçili tab için durum yönetimi
+enum TabSelection { discover, popular, newest }
+
+final selectedTabProvider =
+    StateProvider<TabSelection>((ref) => TabSelection.discover);
+final searchOpenProvider = StateProvider<bool>((ref) => false);
+final searchTermProvider = StateProvider<String>((ref) => '');
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -14,9 +25,14 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final poets = ref.watch(poetProvider);
     final size = MediaQuery.of(context).size;
+    final selectedTab = ref.watch(selectedTabProvider);
+    final isSearchOpen = ref.watch(searchOpenProvider);
+    final searchTerm = ref.watch(searchTermProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1E1E2C),
+      backgroundColor: ref.watch(themeModeProvider) == ThemeMode.dark
+          ? const Color(0xFF1E1E2C) // Dark theme background
+          : Colors.white, // Light theme background
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -31,8 +47,10 @@ class HomePage extends ConsumerWidget {
                   // Background Art
                   Container(
                     height: 360,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF2D2D3F),
+                    decoration: BoxDecoration(
+                      color: ref.watch(themeModeProvider) == ThemeMode.dark
+                          ? const Color(0xFF2D2D3F) // Dark theme surface
+                          : Colors.white, // Light theme surface
                     ),
                     child: Stack(
                       children: [
@@ -44,7 +62,7 @@ class HomePage extends ConsumerWidget {
                             height: 180,
                             width: 180,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE57373).withOpacity(0.3),
+                              color: const Color(0xFFE57373).withOpacity(0.15),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -56,7 +74,7 @@ class HomePage extends ConsumerWidget {
                             height: 200,
                             width: 200,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF64B5F6).withOpacity(0.15),
+                              color: const Color(0xFF64B5F6).withOpacity(0.1),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -77,75 +95,199 @@ class HomePage extends ConsumerWidget {
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Text(
+                                        Text(
                                           "ŞiirArt",
                                           style: TextStyle(
                                             fontSize: 22,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.white,
+                                            color:
+                                                ref.watch(themeModeProvider) ==
+                                                        ThemeMode.dark
+                                                    ? Colors.white
+                                                    : Colors.black,
                                             letterSpacing: 1,
                                           ),
                                         ),
-                                        GestureDetector(
-                                          onTap: () {},
-                                          child: Container(
-                                            height: 42,
-                                            width: 42,
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  Colors.white.withOpacity(0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
+                                        Row(
+                                          children: [
+                                            GestureDetector(
+                                              onTap: () {
+                                                ref
+                                                    .read(searchOpenProvider
+                                                        .notifier)
+                                                    .state = !isSearchOpen;
+                                              },
+                                              child: Container(
+                                                height: 42,
+                                                width: 42,
+                                                decoration: BoxDecoration(
+                                                  color: ref.watch(
+                                                              themeModeProvider) ==
+                                                          ThemeMode.dark
+                                                      ? Colors.white
+                                                          .withOpacity(0.1)
+                                                      : Colors.black
+                                                          .withOpacity(0.05),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: Icon(
+                                                  isSearchOpen
+                                                      ? Icons.close
+                                                      : Icons.search,
+                                                  color: ref.watch(
+                                                              themeModeProvider) ==
+                                                          ThemeMode.dark
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                  size: 20,
+                                                ),
+                                              ),
                                             ),
-                                            child: const Icon(
-                                              Icons.search,
-                                              color: Colors.white,
-                                              size: 20,
+                                            const SizedBox(width: 10),
+                                            // Tema değiştirme butonu
+                                            GestureDetector(
+                                              onTap: () {
+                                                ref
+                                                    .read(themeModeProvider
+                                                        .notifier)
+                                                    .toggleThemeMode();
+                                              },
+                                              child: Container(
+                                                height: 42,
+                                                width: 42,
+                                                decoration: BoxDecoration(
+                                                  color: ref.watch(
+                                                              themeModeProvider) ==
+                                                          ThemeMode.dark
+                                                      ? Colors.white
+                                                          .withOpacity(0.1)
+                                                      : Colors.black
+                                                          .withOpacity(0.05),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: Icon(
+                                                  ref.watch(themeModeProvider) ==
+                                                          ThemeMode.dark
+                                                      ? Icons.dark_mode
+                                                      : Icons.light_mode,
+                                                  color: ref.watch(
+                                                              themeModeProvider) ==
+                                                          ThemeMode.dark
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                  size: 20,
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                          ],
                                         ),
                                       ],
                                     ),
                                   ),
 
-                                  // Feature Section
-                                  Expanded(
-                                    child: Padding(
+                                  // Search Bar (conditional)
+                                  if (isSearchOpen)
+                                    Padding(
                                       padding: const EdgeInsets.fromLTRB(
-                                          30, 20, 30, 10),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          // Big Title
-                                          const Flexible(
-                                            child: Text(
-                                              "Şiirin\nİzinde",
-                                              style: TextStyle(
-                                                fontSize: 48,
-                                                height: 1.1,
-                                                fontWeight: FontWeight.w900,
-                                                color: Colors.white,
-                                                letterSpacing: -1,
-                                              ),
-                                            ),
+                                          30, 15, 30, 0),
+                                      child: TextField(
+                                        style: TextStyle(
+                                            color:
+                                                ref.watch(themeModeProvider) ==
+                                                        ThemeMode.dark
+                                                    ? Colors.white
+                                                    : Colors.black),
+                                        onChanged: (value) {
+                                          ref
+                                              .read(searchTermProvider.notifier)
+                                              .state = value;
+                                        },
+                                        decoration: InputDecoration(
+                                          hintText: 'Şair veya şiir ara...',
+                                          hintStyle: TextStyle(
+                                              color: ref.watch(
+                                                          themeModeProvider) ==
+                                                      ThemeMode.dark
+                                                  ? Colors.white
+                                                      .withOpacity(0.5)
+                                                  : Colors.black
+                                                      .withOpacity(0.5)),
+                                          fillColor: ref.watch(
+                                                      themeModeProvider) ==
+                                                  ThemeMode.dark
+                                              ? Colors.white.withOpacity(0.1)
+                                              : Colors.black.withOpacity(0.05),
+                                          filled: true,
+                                          border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide.none,
                                           ),
-                                          const SizedBox(height: 10),
-                                          // Subtitle
-                                          Text(
-                                            "Kelimelerin büyülü dünyasına dalın",
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              color:
-                                                  Colors.white.withOpacity(0.7),
-                                              letterSpacing: 0.5,
-                                            ),
+                                          prefixIcon: Icon(Icons.search,
+                                              color: ref.watch(
+                                                          themeModeProvider) ==
+                                                      ThemeMode.dark
+                                                  ? Colors.white
+                                                  : Colors.black54),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                            horizontal: 16,
                                           ),
-                                        ],
+                                        ),
                                       ),
                                     ),
-                                  ),
+
+                                  // Feature Section (hidden during search)
+                                  if (!isSearchOpen)
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            30, 20, 30, 10),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            // Big Title
+                                            Flexible(
+                                              child: Text(
+                                                "Şiirin\nİzinde",
+                                                style: TextStyle(
+                                                  fontSize: 48,
+                                                  height: 1.1,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: ref.watch(
+                                                              themeModeProvider) ==
+                                                          ThemeMode.dark
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                  letterSpacing: -1,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            // Subtitle
+                                            Text(
+                                              "Kelimelerin büyülü dünyasına dalın",
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                color: ref.watch(
+                                                            themeModeProvider) ==
+                                                        ThemeMode.dark
+                                                    ? Colors.white
+                                                        .withOpacity(0.7)
+                                                    : Colors.black
+                                                        .withOpacity(0.7),
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
 
                                   // Tab Selection
                                   Container(
@@ -154,9 +296,28 @@ class HomePage extends ConsumerWidget {
                                     height: 40,
                                     child: Row(
                                       children: [
-                                        _buildTab("Keşfet", true),
-                                        _buildTab("Popüler", false),
-                                        _buildTab("Yeni", false),
+                                        _buildTab(
+                                            "Keşfet",
+                                            selectedTab ==
+                                                TabSelection.discover,
+                                            () => ref
+                                                .read(selectedTabProvider
+                                                    .notifier)
+                                                .state = TabSelection.discover),
+                                        _buildTab(
+                                            "Popüler",
+                                            selectedTab == TabSelection.popular,
+                                            () => ref
+                                                .read(selectedTabProvider
+                                                    .notifier)
+                                                .state = TabSelection.popular),
+                                        _buildTab(
+                                            "Yeni",
+                                            selectedTab == TabSelection.newest,
+                                            () => ref
+                                                .read(selectedTabProvider
+                                                    .notifier)
+                                                .state = TabSelection.newest),
                                       ],
                                     ),
                                   ),
@@ -173,247 +334,850 @@ class HomePage extends ConsumerWidget {
             ),
           ),
 
-          // Feature Section Title
-          SliverToBoxAdapter(
-            child: Animate(
-              effects: const [
-                FadeEffect(
-                    delay: Duration(milliseconds: 400),
-                    duration: Duration(milliseconds: 800)),
-              ],
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(30, 20, 30, 5),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Öne Çıkan Şairler",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFFE57373),
-                        padding: EdgeInsets.zero,
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                      child: const Text("Tümünü Gör"),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          // Search Results (only show when search is active and has query)
+          if (isSearchOpen && searchTerm.isNotEmpty)
+            _buildSearchResults(ref, searchTerm),
 
-          // Featured Poets Carousel
-          poets.when(
-            data: (poets) => SliverToBoxAdapter(
-              child: SizedBox(
-                height: 320,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(left: 30, bottom: 20),
-                  itemCount: poets.length >= 5 ? 5 : poets.length,
-                  itemBuilder: (context, index) {
-                    return Animate(
-                      effects: [
-                        FadeEffect(
-                          delay: Duration(milliseconds: 300 + index * 100),
-                          duration: const Duration(milliseconds: 800),
-                        ),
-                        SlideEffect(
-                          delay: Duration(milliseconds: 300 + index * 100),
-                          duration: const Duration(milliseconds: 800),
-                          begin: const Offset(0.3, 0),
-                          end: const Offset(0, 0),
-                        ),
-                      ],
-                      child: FeaturePoetCard(poet: poets[index], index: index),
-                    );
-                  },
-                ),
-              ),
-            ),
-            loading: () => const SliverToBoxAdapter(
-              child: Center(
+          // Regular content (hidden during search with results)
+          if (!isSearchOpen || searchTerm.isEmpty) ...[
+            // Feature Section Title
+            SliverToBoxAdapter(
+              child: Animate(
+                effects: const [
+                  FadeEffect(
+                      delay: Duration(milliseconds: 400),
+                      duration: Duration(milliseconds: 800)),
+                ],
                 child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(
-                    color: Color(0xFFE57373),
-                    strokeWidth: 2,
-                  ),
-                ),
-              ),
-            ),
-            error: (error, stackTrace) => SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  padding: const EdgeInsets.fromLTRB(30, 20, 30, 5),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: Colors.red.shade300,
-                        size: 48,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Bir hata oluştu',
+                      Text(
+                        selectedTab == TabSelection.discover
+                            ? "Öne Çıkan Şairler"
+                            : selectedTab == TabSelection.popular
+                                ? "Popüler Şairler"
+                                : "Yeni Eklenen Şairler",
                         style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white70,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: ref.watch(themeModeProvider) == ThemeMode.dark
+                              ? Colors.white
+                              : Colors.black,
                         ),
                       ),
-                      const SizedBox(height: 16),
                       TextButton(
-                        onPressed: () => ref.refresh(poetProvider),
+                        onPressed: () {
+                          // Tüm şairleri göster
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  _buildAllPoetsPage(context, ref, selectedTab),
+                            ),
+                          );
+                        },
                         style: TextButton.styleFrom(
-                          backgroundColor: const Color(0xFFE57373),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                          foregroundColor: const Color(0xFF4A5BCC),
+                          padding: EdgeInsets.zero,
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
                           ),
                         ),
-                        child: const Text('Tekrar Dene'),
+                        child: const Text("Tümünü Gör"),
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-          ),
 
-          // All Poets Section
-          SliverToBoxAdapter(
-            child: Animate(
-              effects: const [
-                FadeEffect(
-                    delay: Duration(milliseconds: 500),
-                    duration: Duration(milliseconds: 800)),
-              ],
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(30, 10, 30, 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Tüm Şairler",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.filter_list,
-                            color: Colors.white70,
-                            size: 16,
+            // Featured Poets Carousel (filtered by selected tab)
+            poets.when(
+              data: (poets) {
+                // Filtre uygula
+                final filteredPoets = _filterPoetsByTab(poets, selectedTab);
+
+                return SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 320,
+                    child: filteredPoets.isEmpty
+                        ? Center(
+                            child: Text(
+                              'Bu kategoride şair bulunamadı',
+                              style: TextStyle(
+                                  color: ref.watch(themeModeProvider) ==
+                                          ThemeMode.dark
+                                      ? Colors.white70
+                                      : Colors.black54),
+                            ),
+                          )
+                        : ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            padding:
+                                const EdgeInsets.only(left: 30, bottom: 20),
+                            itemCount: filteredPoets.length >= 5
+                                ? 5
+                                : filteredPoets.length,
+                            itemBuilder: (context, index) {
+                              return Animate(
+                                effects: [
+                                  FadeEffect(
+                                    delay: Duration(
+                                        milliseconds: 300 + index * 100),
+                                    duration: const Duration(milliseconds: 800),
+                                  ),
+                                  SlideEffect(
+                                    delay: Duration(
+                                        milliseconds: 300 + index * 100),
+                                    duration: const Duration(milliseconds: 800),
+                                    begin: const Offset(0.3, 0),
+                                    end: const Offset(0, 0),
+                                  ),
+                                ],
+                                child: FeaturePoetCard(
+                                    poet: filteredPoets[index], index: index),
+                              );
+                            },
                           ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            'Filtrele',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
+                  ),
+                );
+              },
+              loading: () => const SliverToBoxAdapter(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF4A5BCC),
+                      strokeWidth: 2,
+                    ),
+                  ),
+                ),
+              ),
+              error: (error, stackTrace) => SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: Colors.red.shade300,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Bir hata oluştu',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: () => ref.refresh(poetProvider),
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFF4A5BCC),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // All Poets Grid
-          poets.when(
-            data: (poets) => SliverPadding(
-              padding: const EdgeInsets.fromLTRB(30, 0, 30, 30),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.7,
-                  crossAxisSpacing: 15,
-                  mainAxisSpacing: 15,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    return Animate(
-                      effects: [
-                        FadeEffect(
-                          delay: Duration(milliseconds: 200 + index * 50),
-                          duration: const Duration(milliseconds: 500),
+                          child: const Text('Tekrar Dene'),
                         ),
                       ],
-                      child: PoetGridCard(poet: poets[index], index: index),
-                    );
-                  },
-                  childCount: poets.length,
-                ),
-              ),
-            ),
-            loading: () => const SliverFillRemaining(
-              child: Center(
-                child: CircularProgressIndicator(color: Color(0xFFE57373)),
-              ),
-            ),
-            error: (error, stackTrace) => SliverFillRemaining(
-              child: Center(
-                child: Text(
-                  'Bir hata oluştu',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white.withOpacity(0.7),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
+
+            // All Poets Section
+            SliverToBoxAdapter(
+              child: Animate(
+                effects: const [
+                  FadeEffect(
+                      delay: Duration(milliseconds: 500),
+                      duration: Duration(milliseconds: 800)),
+                ],
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(30, 10, 30, 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Tüm Şairler",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: ref.watch(themeModeProvider) == ThemeMode.dark
+                              ? Colors.white
+                              : Colors.black,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _showFilterDialog(context, ref),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color:
+                                ref.watch(themeModeProvider) == ThemeMode.dark
+                                    ? Colors.white.withOpacity(0.08)
+                                    : Colors.black.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.filter_list,
+                                color: ref.watch(themeModeProvider) ==
+                                        ThemeMode.dark
+                                    ? Colors.white54
+                                    : Colors.black54,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Filtrele',
+                                style: TextStyle(
+                                  color: ref.watch(themeModeProvider) ==
+                                          ThemeMode.dark
+                                      ? Colors.white54
+                                      : Colors.black54,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // All Poets Grid (filtered by selected tab)
+            poets.when(
+              data: (poets) {
+                // Filtre uygula
+                final filteredPoets = _filterPoetsByTab(poets, selectedTab);
+
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(30, 0, 30, 30),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.7,
+                      crossAxisSpacing: 15,
+                      mainAxisSpacing: 15,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        return Animate(
+                          effects: [
+                            FadeEffect(
+                              delay: Duration(milliseconds: 200 + index * 50),
+                              duration: const Duration(milliseconds: 500),
+                            ),
+                          ],
+                          child: PoetGridCard(
+                              poet: filteredPoets[index], index: index),
+                        );
+                      },
+                      childCount: filteredPoets.length,
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SliverFillRemaining(
+                child: Center(
+                  child: CircularProgressIndicator(color: Color(0xFFE57373)),
+                ),
+              ),
+              error: (error, stackTrace) => SliverFillRemaining(
+                child: Center(
+                  child: Text(
+                    'Bir hata oluştu',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black.withOpacity(0.7),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildTab(String label, bool isSelected) {
-    return Container(
-      margin: const EdgeInsets.only(right: 15),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFFE57373) : Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        border: isSelected
-            ? null
-            : Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+  // Arama sonuçları widgeti
+  Widget _buildSearchResults(WidgetRef ref, String query) {
+    if (query.isEmpty)
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    // Şairleri ara
+    return Consumer(
+      builder: (context, ref, child) {
+        final poetsAsync = ref.watch(poetProvider);
+        final poemsAsync = ref.watch(poemProvider);
+
+        return SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Şair sonuçları
+              Padding(
+                padding: const EdgeInsets.fromLTRB(30, 10, 30, 10),
+                child: Text(
+                  "Şairler",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+
+              poetsAsync.when(
+                data: (poets) {
+                  final results = poets
+                      .where((poet) =>
+                          poet.name
+                              .toLowerCase()
+                              .contains(query.toLowerCase()) ||
+                          poet.biography
+                              .toLowerCase()
+                              .contains(query.toLowerCase()))
+                      .toList();
+
+                  if (results.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 30, bottom: 20),
+                      child: Text(
+                        'Hiçbir şair bulunamadı',
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                    );
+                  }
+
+                  return SizedBox(
+                    height: 230,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.only(left: 30, bottom: 20),
+                      itemCount: results.length,
+                      itemBuilder: (context, index) {
+                        return FeaturePoetCard(
+                          poet: results[index],
+                          index: index,
+                        );
+                      },
+                    ),
+                  );
+                },
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: CircularProgressIndicator(color: Color(0xFFE57373)),
+                  ),
+                ),
+                error: (_, __) => const Center(
+                  child: Text('Bir hata oluştu',
+                      style: TextStyle(color: Colors.black54)),
+                ),
+              ),
+
+              // Şiir sonuçları
+              Padding(
+                padding: const EdgeInsets.fromLTRB(30, 20, 30, 10),
+                child: Text(
+                  "Şiirler",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+
+              poemsAsync.when(
+                data: (poems) {
+                  final results = poems
+                      .where((poem) =>
+                          poem.title
+                              .toLowerCase()
+                              .contains(query.toLowerCase()) ||
+                          poem.content
+                              .toLowerCase()
+                              .contains(query.toLowerCase()) ||
+                          poem.author
+                              .toLowerCase()
+                              .contains(query.toLowerCase()))
+                      .toList();
+
+                  if (results.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 30, bottom: 30),
+                      child: Text(
+                        'Hiçbir şiir bulunamadı',
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding:
+                        const EdgeInsets.only(left: 30, right: 30, bottom: 30),
+                    itemCount: results.length > 5 ? 5 : results.length,
+                    itemBuilder: (context, index) {
+                      final poem = results[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 15),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: ListTile(
+                          onTap: () {
+                            // Şiir detayına git
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    PoemDetailPage(poem: poem),
+                              ),
+                            );
+                          },
+                          title: Text(
+                            poem.title,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Text(
+                            poem.author,
+                            style:
+                                TextStyle(color: Colors.black.withOpacity(0.7)),
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            color: Colors.black54,
+                            size: 16,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: CircularProgressIndicator(color: Color(0xFFE57373)),
+                  ),
+                ),
+                error: (_, __) => const Center(
+                  child: Text('Bir hata oluştu',
+                      style: TextStyle(color: Colors.black54)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Sekme seçimlerine göre şairleri filtrele
+  List<dynamic> _filterPoetsByTab(List<dynamic> poets, TabSelection tab) {
+    switch (tab) {
+      case TabSelection.popular:
+        // Popüler olanları göster (şimdilik notableWorks sayısına göre)
+        return List.from(poets)
+          ..sort(
+              (a, b) => b.notableWorks.length.compareTo(a.notableWorks.length));
+      case TabSelection.newest:
+        // Yeni eklenenler (bu örnekte doğum yılı yeni olanları gösterelim)
+        return List.from(poets)
+          ..sort((a, b) {
+            // İlk doğum tarihlerine sayısal olarak dönüştürmeye çalış
+            final aBirth = int.tryParse(a.birthDate.split(' ').last) ?? 0;
+            final bBirth = int.tryParse(b.birthDate.split(' ').last) ?? 0;
+            return bBirth.compareTo(aBirth); // Daha yeni doğanlar önce
+          });
+      case TabSelection.discover:
+      default:
+        // Varsayılan sıralama
+        return poets;
+    }
+  }
+
+  Widget _buildTab(String label, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Consumer(builder: (context, ref, _) {
+        final isDarkMode = ref.watch(themeModeProvider) == ThemeMode.dark;
+        return Container(
+          margin: const EdgeInsets.only(right: 15),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF4A5BCC) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: isSelected
+                ? null
+                : Border.all(
+                    color: isDarkMode
+                        ? Colors.white.withOpacity(0.3)
+                        : Colors.black.withOpacity(0.3),
+                    width: 1),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected
+                  ? Colors.white
+                  : isDarkMode
+                      ? Colors.white.withOpacity(0.7)
+                      : Colors.black.withOpacity(0.7),
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  // Tüm şairleri gösteren sayfa
+  Widget _buildAllPoetsPage(
+      BuildContext context, WidgetRef ref, TabSelection currentTab) {
+    final isDarkMode = ref.watch(themeModeProvider) == ThemeMode.dark;
+
+    return Scaffold(
+      backgroundColor: isDarkMode ? const Color(0xFF1E1E2C) : Colors.white,
+      appBar: AppBar(
+        title: Text(currentTab == TabSelection.discover
+            ? "Keşfedilen Şairler"
+            : currentTab == TabSelection.popular
+                ? "Popüler Şairler"
+                : "Yeni Eklenen Şairler"),
+        backgroundColor: isDarkMode ? const Color(0xFF2D2D3F) : Colors.white,
+        elevation: 0,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: () => _showFilterDialog(context, ref),
+          ),
+        ],
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
-          fontSize: 14,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-        ),
+      body: Consumer(
+        builder: (context, ref, child) {
+          final poetsAsync = ref.watch(poetProvider);
+
+          return poetsAsync.when(
+            data: (poets) {
+              final filteredPoets = _filterPoetsByTab(poets, currentTab);
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: filteredPoets.length,
+                itemBuilder: (context, index) {
+                  final poet = filteredPoets[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    color: isDarkMode ? const Color(0xFF2D2D3F) : Colors.white,
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PoetDetailPage(poet: poet),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            // Avatar
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                image: poet.imageUrl.startsWith('color:')
+                                    ? null
+                                    : DecorationImage(
+                                        image: CachedNetworkImageProvider(
+                                            poet.imageUrl),
+                                        fit: BoxFit.cover,
+                                      ),
+                                color: poet.imageUrl.startsWith('color:')
+                                    ? const Color(0xFFE57373).withOpacity(0.3)
+                                    : null,
+                              ),
+                              child: poet.imageUrl.startsWith('color:')
+                                  ? Center(
+                                      child: Text(
+                                        poet.name.substring(0, 1),
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 16),
+                            // Info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    poet.name,
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${poet.birthDate} - ${poet.deathDate}',
+                                    style: TextStyle(
+                                      color: Colors.black.withOpacity(0.7),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE57373)
+                                              .withOpacity(0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.menu_book_outlined,
+                                              color: Color(0xFFE57373),
+                                              size: 12,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '${poet.notableWorks.length} şiir',
+                                              style: const TextStyle(
+                                                color: Color(0xFFE57373),
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (poet.styles.isNotEmpty) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF64B5F6)
+                                                .withOpacity(0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            poet.styles[0],
+                                            style: const TextStyle(
+                                              color: Color(0xFF64B5F6),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.black54,
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+            loading: () => const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFE57373),
+              ),
+            ),
+            error: (error, stack) => Center(
+              child: Text(
+                'Hata: $error',
+                style: const TextStyle(color: Colors.black54),
+              ),
+            ),
+          );
+        },
       ),
+    );
+  }
+
+  // Filtreleme diyaloğu
+  void _showFilterDialog(BuildContext context, WidgetRef ref) {
+    final isDarkMode = ref.watch(themeModeProvider) == ThemeMode.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDarkMode ? const Color(0xFF2D2D3F) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Filtreleme Seçenekleri',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: ref.watch(themeModeProvider) == ThemeMode.dark
+                          ? Colors.white
+                          : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Filter options
+                  Text(
+                    'Kategori',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: ref.watch(themeModeProvider) == ThemeMode.dark
+                          ? Colors.white54
+                          : Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: TabSelection.values.map((tab) {
+                      final isSelected = ref.read(selectedTabProvider) == tab;
+
+                      return GestureDetector(
+                        onTap: () {
+                          ref.read(selectedTabProvider.notifier).state = tab;
+                          setState(() {});
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFF4A5BCC)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            tab == TabSelection.discover
+                                ? 'Keşfet'
+                                : tab == TabSelection.popular
+                                    ? 'Popüler'
+                                    : 'Yeni',
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.black.withOpacity(0.7),
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Apply button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: const Color(0xFF4A5BCC),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Uygula',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -451,7 +1215,7 @@ class FeaturePoetCard extends StatelessWidget {
         width: 220,
         margin: const EdgeInsets.only(right: 20, top: 5, bottom: 15),
         decoration: BoxDecoration(
-          color: const Color(0xFF2D2D3F),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -525,7 +1289,7 @@ class FeaturePoetCard extends StatelessWidget {
                               poet.name,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 18,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
                               maxLines: 2,
@@ -550,8 +1314,8 @@ class FeaturePoetCard extends StatelessWidget {
                         Text(
                           '${poet.birthDate} - ${poet.deathDate}',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 12,
                           ),
                         ),
 
@@ -602,12 +1366,12 @@ class FeaturePoetCard extends StatelessWidget {
     // Check if using a color placeholder instead of an image URL
     if (imageUrl.startsWith('color:')) {
       return Container(
-        color: const Color(0xFF2D2D3F),
+        color: Colors.white,
         child: Center(
           child: Icon(
             Icons.format_quote,
             size: 50,
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.black.withOpacity(0.2),
           ),
         ),
       );
@@ -617,21 +1381,21 @@ class FeaturePoetCard extends StatelessWidget {
         imageUrl: imageUrl,
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(
-          color: const Color(0xFF2D2D3F),
+          color: Colors.white,
           child: const Center(
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: Colors.white38,
+              color: Colors.black38,
             ),
           ),
         ),
         errorWidget: (context, url, error) => Container(
-          color: const Color(0xFF2D2D3F),
+          color: Colors.white,
           child: Center(
             child: Icon(
               Icons.format_quote,
               size: 50,
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.black.withOpacity(0.2),
             ),
           ),
         ),
@@ -671,7 +1435,7 @@ class PoetGridCard extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF2D2D3F),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -720,7 +1484,7 @@ class PoetGridCard extends StatelessWidget {
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              const Color(0xFF2D2D3F).withOpacity(0.9),
+                              Colors.grey.withOpacity(0.9),
                             ],
                           ),
                         ),
@@ -773,7 +1537,7 @@ class PoetGridCard extends StatelessWidget {
                       Text(
                         poet.name,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Colors.black,
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -785,7 +1549,7 @@ class PoetGridCard extends StatelessWidget {
                       Text(
                         '${poet.birthDate} - ${poet.deathDate}',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: Colors.black.withOpacity(0.6),
                           fontSize: 12,
                         ),
                       ),

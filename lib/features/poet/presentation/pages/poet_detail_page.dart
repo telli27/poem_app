@@ -5,6 +5,7 @@ import 'package:poemapp/models/poem.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:poemapp/features/poem/presentation/pages/poem_detail_page.dart';
 import 'package:poemapp/features/home/providers/poem_provider.dart';
+import 'package:poemapp/core/theme/theme_provider.dart';
 import 'dart:ui';
 
 class PoetDetailPage extends ConsumerStatefulWidget {
@@ -25,9 +26,13 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = const Color(0xFF1E1E2C);
-    final cardColor = const Color(0xFF2D2D3F);
-    final textColor = Colors.white;
+    final themeMode = ref.watch(themeModeProvider);
+    final isDarkTheme = themeMode == ThemeMode.dark;
+
+    final bgColor = isDarkTheme ? const Color(0xFF1E1E2C) : Colors.white;
+    final cardColor =
+        isDarkTheme ? const Color(0xFF2D2D3F) : const Color(0xFFF8F9FA);
+    final textColor = isDarkTheme ? Colors.white : Colors.black87;
     final accentColor = const Color(0xFFE57373);
 
     return Scaffold(
@@ -264,6 +269,35 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                       ),
                     ),
                   ),
+                  // Tema değiştirme butonu
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: GestureDetector(
+                      onTap: () {
+                        ref.read(themeModeProvider.notifier).toggleThemeMode();
+                      },
+                      child: Container(
+                        height: 40,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          color: cardColor.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              offset: const Offset(0, 4),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          isDarkTheme ? Icons.dark_mode : Icons.light_mode,
+                          color: accentColor,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
 
@@ -385,32 +419,44 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              'Tümünü Gör',
-                              style: TextStyle(
-                                color: textColor.withOpacity(0.8),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                      GestureDetector(
+                        onTap: () {
+                          // Şairin tüm şiirlerini göster
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  _buildAllPoemsPage(context, widget.poet),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Tümünü Gör',
+                                style: TextStyle(
+                                  color: textColor.withOpacity(0.8),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              color: textColor.withOpacity(0.8),
-                              size: 12,
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                color: textColor.withOpacity(0.8),
+                                size: 12,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -611,5 +657,144 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
     }
 
     return '$birthDate - $deathDate';
+  }
+
+  // Şairin tüm şiirlerini gösteren sayfa
+  Widget _buildAllPoemsPage(BuildContext context, Poet poet) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1E1E2C),
+      appBar: AppBar(
+        title: Text('${poet.name} - Tüm Şiirleri'),
+        backgroundColor: const Color(0xFF2D2D3F),
+        elevation: 0,
+      ),
+      body: Consumer(
+        builder: (context, ref, child) {
+          final poemsAsyncValue = ref.watch(poemProvider);
+
+          return poemsAsyncValue.when(
+            data: (allPoems) {
+              // Şairin şiirlerini bul
+              final poetPoems =
+                  allPoems.where((poem) => poem.poetId == poet.id).toList();
+
+              if (poetPoems.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'Bu şairin şiirleri henüz eklenmemiş',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: poetPoems.length,
+                itemBuilder: (context, index) {
+                  final poem = poetPoems[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    color: const Color(0xFF2D2D3F),
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PoemDetailPage(poem: poem),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 4,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE57373),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    poem.title,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              poem.content,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 15,
+                                height: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: poem.tags.map((tag) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE57373)
+                                        .withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    '#$tag',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFFE57373),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+            loading: () => const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFE57373),
+              ),
+            ),
+            error: (error, stack) => Center(
+              child: Text(
+                'Hata: $error',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }
