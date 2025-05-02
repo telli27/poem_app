@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:poemapp/models/poem.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:poemapp/features/poem/presentation/pages/poem_detail_page.dart';
+import 'package:poemapp/features/home/providers/poet_provider.dart';
 
 class PoemCard extends ConsumerWidget {
   final Poem poem;
@@ -32,35 +32,6 @@ class PoemCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (poem.imageUrl != null)
-              Hero(
-                tag: 'poem-image-${poem.id}',
-                child: CachedNetworkImage(
-                  imageUrl: poem.imageUrl!,
-                  height: 180,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    height: 180,
-                    color:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    height: 180,
-                    color:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    child: Icon(
-                      Icons.image_not_supported,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -71,7 +42,7 @@ class PoemCard extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          poem.title,
+                          poem.name,
                           style: Theme.of(context)
                               .textTheme
                               .headlineSmall
@@ -96,13 +67,20 @@ class PoemCard extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    poem.author,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                  ),
+                  FutureBuilder<String>(
+                      future: _getPoetName(ref, poem.poetId),
+                      builder: (context, snapshot) {
+                        return Text(
+                          snapshot.data ?? "Yükleniyor...",
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        );
+                      }),
                   if (poem.year != null) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -140,26 +118,6 @@ class PoemCard extends ConsumerWidget {
                       }).toList(),
                     ),
                   ],
-                  if (poem.readingTime != null) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.timer_outlined,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${poem.readingTime} dakika',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -168,5 +126,15 @@ class PoemCard extends ConsumerWidget {
       ),
     ).animate().fadeIn(duration: const Duration(milliseconds: 300)).slideY(
         begin: 0.1, end: 0, duration: const Duration(milliseconds: 300));
+  }
+
+  // Helper method to get poet name from poetId
+  Future<String> _getPoetName(WidgetRef ref, String poetId) async {
+    final poetsAsync = await ref.watch(poetProvider.future);
+    final poet = poetsAsync.firstWhere(
+      (p) => p.id == poetId,
+      orElse: () => throw Exception('Şair bulunamadı: $poetId'),
+    );
+    return poet.name;
   }
 }

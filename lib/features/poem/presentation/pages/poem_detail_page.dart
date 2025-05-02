@@ -4,6 +4,9 @@ import 'package:poemapp/models/poem.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:ui';
+import 'package:poemapp/core/theme/theme_provider.dart';
+import 'package:poemapp/features/poem/presentation/screens/poem_item_widget.dart';
+import 'package:poemapp/providers/favorites_provider.dart';
 
 class PoemDetailPage extends ConsumerStatefulWidget {
   final Poem poem;
@@ -18,16 +21,18 @@ class PoemDetailPage extends ConsumerStatefulWidget {
 }
 
 class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
-  bool isFavorite = false;
   double _fontSize = 16.0;
-  bool _isDarkMode = true; // Default is now dark mode
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = _isDarkMode ? const Color(0xFF1E1E2C) : Colors.white;
+    final themeMode = ref.watch(themeModeProvider);
+    final isDarkMode = themeMode == ThemeMode.dark;
+    final isFavorite = ref.watch(isPoemFavoriteProvider(widget.poem.id));
+
+    final bgColor = isDarkMode ? const Color(0xFF1E1E2C) : Colors.white;
     final cardColor =
-        _isDarkMode ? const Color(0xFF2D2D3F) : const Color(0xFFF8F9FA);
-    final textColor = _isDarkMode ? Colors.white : Colors.black87;
+        isDarkMode ? const Color(0xFF2D2D3F) : const Color(0xFFF8F9FA);
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
     final accentColor = const Color(0xFFE57373);
 
     return Scaffold(
@@ -103,9 +108,9 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
                             children: [
                               GestureDetector(
                                 onTap: () {
-                                  setState(() {
-                                    isFavorite = !isFavorite;
-                                  });
+                                  ref
+                                      .read(favoritePoemsProvider.notifier)
+                                      .toggleFavorite(widget.poem);
                                 },
                                 child: Container(
                                   height: 42,
@@ -123,8 +128,8 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
                                   ),
                                   child: Icon(
                                     isFavorite
-                                        ? Icons.bookmark
-                                        : Icons.bookmark_outline,
+                                        ? Icons.favorite
+                                        : Icons.favorite_outline,
                                     color: isFavorite ? accentColor : textColor,
                                     size: 20,
                                   ),
@@ -134,7 +139,7 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
                               GestureDetector(
                                 onTap: () {
                                   Share.share(
-                                    '${widget.poem.title}\n\n${widget.poem.content}\n\n- ${widget.poem.author}',
+                                    '${widget.poem.name}\n\n${widget.poem.content}\n\n- ${widget.poem.poetId}',
                                   );
                                 },
                                 child: Container(
@@ -197,67 +202,11 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Quote icon
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 15),
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: accentColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(
-                              Icons.format_quote,
-                              color: accentColor,
-                              size: 20,
-                            ),
-                          ),
-
-                          // Title
-                          Text(
-                            widget.poem.title,
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              height: 1.3,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Author and date
-                          Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  color: accentColor,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    widget.poem.author,
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  if (widget.poem.year != null)
-                                    Text(
-                                      widget.poem.year!,
-                                      style: TextStyle(
-                                        color: textColor.withOpacity(0.6),
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
+                          // Önceki kod yerine yeni widget'ı kullanıyoruz
+                          PoemItemWidget(
+                            poem: widget.poem,
+                            textColor: textColor,
+                            accentColor: accentColor,
                           ),
                         ],
                       ),
@@ -457,7 +406,7 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Icon(
-                                      _isDarkMode
+                                      isDarkMode
                                           ? Icons.dark_mode
                                           : Icons.light_mode,
                                       color: accentColor,
@@ -476,12 +425,14 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
                                 ],
                               ),
                               Switch(
-                                value: _isDarkMode,
+                                value: isDarkMode,
                                 activeColor: accentColor,
                                 onChanged: (value) {
-                                  setState(() {
-                                    _isDarkMode = value;
-                                  });
+                                  ref
+                                      .read(themeModeProvider.notifier)
+                                      .setThemeMode(value
+                                          ? ThemeMode.dark
+                                          : ThemeMode.light);
                                 },
                               ),
                             ],

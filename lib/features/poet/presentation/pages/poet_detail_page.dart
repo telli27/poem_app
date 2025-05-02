@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:poemapp/models/poet.dart';
-import 'package:poemapp/models/poem.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:poemapp/features/poem/presentation/pages/poem_detail_page.dart';
-import 'package:poemapp/features/home/providers/poem_provider.dart';
+import 'package:poemapp/models/poem.dart';
+import 'package:poemapp/models/poet.dart';
 import 'package:poemapp/core/theme/theme_provider.dart';
 import 'dart:ui';
+import 'package:poemapp/features/home/providers/poet_provider.dart';
+import 'package:poemapp/features/home/providers/poem_provider.dart';
+import 'package:poemapp/services/api_service.dart';
+import 'package:poemapp/features/home/providers/api_service_provider.dart';
 
 class PoetDetailPage extends ConsumerStatefulWidget {
   final Poet poet;
@@ -25,6 +28,12 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
   bool _isExpanded = false;
 
   @override
+  void initState() {
+    super.initState();
+    _isExpanded = false;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
     final isDarkTheme = themeMode == ThemeMode.dark;
@@ -34,6 +43,7 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
         isDarkTheme ? const Color(0xFF2D2D3F) : const Color(0xFFF8F9FA);
     final textColor = isDarkTheme ? Colors.white : Colors.black87;
     final accentColor = const Color(0xFFE57373);
+    final appBarIconColor = isDarkTheme ? Colors.white : Colors.black87;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -77,16 +87,46 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                 pinned: true,
                 backgroundColor: bgColor,
                 elevation: 0,
+                leading: Padding(
+                  padding: const EdgeInsets.only(left: 10, top: 10),
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      height: 40,
+                      width: 40,
+                      decoration: BoxDecoration(
+                        color: cardColor.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            offset: const Offset(0, 4),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.arrow_back,
+                        color: appBarIconColor,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
                 flexibleSpace: FlexibleSpaceBar(
+                  titlePadding: EdgeInsets.zero,
+                  expandedTitleScale: 1.0,
+                  collapseMode: CollapseMode.pin,
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
                       // Background image with gradient overlay
                       Container(
                         decoration: BoxDecoration(
-                          image: widget.poet.imageUrl != null
+                          color: bgColor,
+                          image: widget.poet.image.isNotEmpty
                               ? DecorationImage(
-                                  image: NetworkImage(widget.poet.imageUrl),
+                                  image: NetworkImage(widget.poet.image),
                                   fit: BoxFit.cover,
                                 )
                               : null,
@@ -111,30 +151,55 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
 
                       // Poet content
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+                        padding: const EdgeInsets.fromLTRB(20, 100, 0, 0),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Poet avatar
-                            Container(
-                              width: 90,
-                              height: 90,
-                              margin: const EdgeInsets.only(bottom: 16),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border:
-                                    Border.all(color: accentColor, width: 3),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    blurRadius: 10,
+                            // Poet avatar with more top padding to move it down
+                            Padding(
+                              padding: const EdgeInsets.only(top: 0),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 90,
+                                    height: 90,
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: widget.poet.image.isEmpty
+                                          ? accentColor.withOpacity(0.2)
+                                          : null,
+                                      border: Border.all(
+                                          color: accentColor, width: 3),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 10,
+                                        ),
+                                      ],
+                                      image: widget.poet.image.isNotEmpty
+                                          ? DecorationImage(
+                                              image: NetworkImage(
+                                                  widget.poet.image),
+                                              fit: BoxFit.cover,
+                                            )
+                                          : null,
+                                    ),
+                                    child: widget.poet.image.isEmpty
+                                        ? Center(
+                                            child: Text(
+                                              _getInitial(widget.poet.name),
+                                              style: TextStyle(
+                                                color: accentColor,
+                                                fontSize: 32,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          )
+                                        : null,
                                   ),
                                 ],
-                                image: DecorationImage(
-                                  image: NetworkImage(widget.poet.imageUrl),
-                                  fit: BoxFit.cover,
-                                ),
                               ),
                             ),
 
@@ -153,8 +218,10 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                                   ],
                                   child: Text(
                                     widget.poet.name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: isDarkTheme
+                                          ? Colors.white
+                                          : Colors.black87,
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 0.5,
@@ -173,7 +240,9 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                                     _formatYears(widget.poet.birthDate,
                                         widget.poet.deathDate),
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.8),
+                                      color: isDarkTheme
+                                          ? Colors.white.withOpacity(0.8)
+                                          : Colors.black87.withOpacity(0.8),
                                       fontSize: 16,
                                     ),
                                   ),
@@ -199,10 +268,13 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                                           ),
                                           const SizedBox(width: 5),
                                           Text(
-                                            '${widget.poet.notableWorks.length} Şiir',
+                                            '${widget.poet.poemCount} Şiir',
                                             style: TextStyle(
-                                              color:
-                                                  Colors.white.withOpacity(0.9),
+                                              color: isDarkTheme
+                                                  ? Colors.white
+                                                      .withOpacity(0.9)
+                                                  : Colors.black87
+                                                      .withOpacity(0.9),
                                               fontSize: 14,
                                             ),
                                           ),
@@ -219,59 +291,10 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                     ],
                   ),
                 ),
-                leading: Padding(
-                  padding: const EdgeInsets.only(left: 10),
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      height: 40,
-                      width: 40,
-                      decoration: BoxDecoration(
-                        color: cardColor.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            offset: const Offset(0, 4),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
                 actions: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: Container(
-                      height: 40,
-                      width: 40,
-                      decoration: BoxDecoration(
-                        color: cardColor.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            offset: const Offset(0, 4),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.favorite_outline,
-                        color: accentColor,
-                        size: 20,
-                      ),
-                    ),
-                  ),
                   // Tema değiştirme butonu
                   Padding(
-                    padding: const EdgeInsets.only(right: 16),
+                    padding: const EdgeInsets.only(right: 16, top: 10),
                     child: GestureDetector(
                       onTap: () {
                         ref.read(themeModeProvider.notifier).toggleThemeMode();
@@ -301,9 +324,8 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                 ],
               ),
 
-              // Biography section
-              if (widget.poet.biography != null &&
-                  widget.poet.biography!.isNotEmpty)
+              // Biography section - Minimalist Design
+              if (widget.poet.about.isNotEmpty)
                 SliverToBoxAdapter(
                   child: Animate(
                     effects: const [
@@ -314,15 +336,15 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                     ],
                     child: Container(
                       margin: const EdgeInsets.fromLTRB(20, 20, 20, 25),
-                      padding: const EdgeInsets.all(25),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: cardColor,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            offset: const Offset(0, 8),
-                            blurRadius: 15,
+                            color: Colors.black.withOpacity(0.1),
+                            offset: const Offset(0, 6),
+                            blurRadius: 10,
                           ),
                         ],
                       ),
@@ -334,39 +356,39 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: accentColor.withOpacity(0.15),
+                                  color: accentColor.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
                                   Icons.info_outline,
                                   color: accentColor,
-                                  size: 20,
+                                  size: 18,
                                 ),
                               ),
-                              const SizedBox(width: 15),
+                              const SizedBox(width: 12),
                               Text(
                                 'Biyografi',
                                 style: TextStyle(
                                   color: textColor,
-                                  fontSize: 18,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 15),
                           Text(
-                            widget.poet.biography!,
+                            widget.poet.about,
                             style: TextStyle(
-                              color: textColor.withOpacity(0.85),
-                              fontSize: 15,
+                              color: textColor.withOpacity(0.8),
+                              fontSize: 14,
                               height: 1.6,
                             ),
                             maxLines: _isExpanded ? null : 6,
                             overflow:
                                 _isExpanded ? null : TextOverflow.ellipsis,
                           ),
-                          if (widget.poet.biography!.length > 200)
+                          if (widget.poet.about.length > 200)
                             GestureDetector(
                               onTap: () {
                                 setState(() {
@@ -374,7 +396,7 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                                 });
                               },
                               child: Padding(
-                                padding: const EdgeInsets.only(top: 16),
+                                padding: const EdgeInsets.only(top: 12),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -384,7 +406,8 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                                           : 'Devamını Oku',
                                       style: TextStyle(
                                         color: accentColor,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 14,
                                       ),
                                     ),
                                     Icon(
@@ -392,7 +415,7 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                                           ? Icons.keyboard_arrow_up
                                           : Icons.keyboard_arrow_down,
                                       color: accentColor,
-                                      size: 20,
+                                      size: 18,
                                     ),
                                   ],
                                 ),
@@ -412,7 +435,7 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Şiirleri',
+                        'Şiirler',
                         style: TextStyle(
                           color: textColor,
                           fontSize: 22,
@@ -421,7 +444,10 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                       ),
                       GestureDetector(
                         onTap: () {
-                          // Şairin tüm şiirlerini göster
+                          // Şair ID'sini seçili şair provider'ına aktar
+                          ref.read(selectedPoetIdProvider.notifier).state =
+                              widget.poet.id;
+                          // Tüm şiirler sayfasına geçiş yap
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -469,60 +495,98 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
                 sliver: Consumer(
                   builder: (context, ref, child) {
-                    final poemsAsyncValue = ref.watch(poemProvider);
+                    // Debug poet ID
+                    print(
+                        "🔍 Looking for poems for poet with ID: ${widget.poet.id}");
 
-                    return poemsAsyncValue.when(
-                      data: (allPoems) {
-                        // Filter poems for this specific poet
-                        final poetPoems = allPoems
-                            .where((poem) => poem.poetId == widget.poet.id)
-                            .toList();
+                    // Şaire ait şiirleri getir - Şairin ID'sini doğrudan kullan
+                    final poemsAsync =
+                        ref.watch(poemsByPoetProvider(widget.poet.id));
 
-                        if (poetPoems.isEmpty) {
-                          return SliverToBoxAdapter(
-                            child: Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(20.0),
-                                child: Text(
+                    // Check if poems are empty
+                    if (poemsAsync.isEmpty) {
+                      // Try to reload the data if we haven't tried yet
+                      if (!ref.read(refreshDataProvider)) {
+                        // Set the refresh flag to true to trigger a reload
+                        print(
+                            "🔄 Triggering data refresh for poet ${widget.poet.id}");
+                        Future.microtask(() {
+                          ref.read(refreshDataProvider.notifier).state = true;
+                        });
+
+                        return SliverToBoxAdapter(
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Column(
+                                children: [
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Şiirler yükleniyor...',
+                                    style: TextStyle(
+                                        color: textColor.withOpacity(0.7)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return SliverToBoxAdapter(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.sentiment_dissatisfied,
+                                  size: 40,
+                                  color: textColor.withOpacity(0.5),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
                                   'Bu şairin şiirleri henüz eklenmemiş',
                                   style: TextStyle(
                                       color: textColor.withOpacity(0.7)),
                                 ),
-                              ),
+                                const SizedBox(height: 20),
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    // Clear cache and trigger reload
+                                    ref
+                                        .read(apiServiceProvider)
+                                        .clearCache()
+                                        .then((_) {
+                                      ref
+                                          .read(refreshDataProvider.notifier)
+                                          .state = true;
+                                    });
+                                  },
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Yeniden Dene'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        accentColor.withOpacity(0.2),
+                                    foregroundColor: accentColor,
+                                  ),
+                                ),
+                              ],
                             ),
-                          );
-                        }
+                          ),
+                        ),
+                      );
+                    }
 
-                        return SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              if (index >= poetPoems.length) return null;
-                              return _buildPoemCard(poetPoems[index],
-                                  accentColor, textColor, cardColor);
-                            },
-                            childCount: poetPoems.length,
-                          ),
-                        );
-                      },
-                      loading: () => const SliverToBoxAdapter(
-                        child: Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(20.0),
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                      ),
-                      error: (err, stack) => SliverToBoxAdapter(
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20.0),
-                            child: Text(
-                              'Şiirler yüklenirken bir hata oluştu',
-                              style:
-                                  TextStyle(color: textColor.withOpacity(0.7)),
-                            ),
-                          ),
-                        ),
+                    return SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          if (index >= poemsAsync.length) return null;
+                          return _buildPoemCard(poemsAsync[index], accentColor,
+                              textColor, cardColor);
+                        },
+                        childCount: poemsAsync.length,
                       ),
                     );
                   },
@@ -589,7 +653,7 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          poem.title,
+                          poem.name,
                           style: TextStyle(
                             color: textColor,
                             fontSize: 17,
@@ -608,37 +672,63 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    poem.content,
+                    poem.content.trim().isEmpty
+                        ? "Şiirin içeriğini görmek için tıkla..."
+                        : poem.content,
                     style: TextStyle(
                       color: textColor.withOpacity(0.75),
                       fontSize: 14,
                       height: 1.5,
+                      fontStyle: poem.content.trim().isEmpty
+                          ? FontStyle.italic
+                          : FontStyle.normal,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 16),
                   Row(
-                    children: poem.tags.map((tag) {
-                      return Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: accentColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '#$tag',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: accentColor,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                    children: (poem.tags.isEmpty)
+                        ? [
+                            Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: accentColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '#şiir',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: accentColor,
+                                ),
+                              ),
+                            ),
+                          ]
+                        : poem.tags.map((tag) {
+                            return Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: accentColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '#$tag',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: accentColor,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                   ),
                 ],
               ),
@@ -659,142 +749,81 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
     return '$birthDate - $deathDate';
   }
 
-  // Şairin tüm şiirlerini gösteren sayfa
+  // Şair şiirlerinin tamamını gösteren sayfa
   Widget _buildAllPoemsPage(BuildContext context, Poet poet) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1E1E2C),
-      appBar: AppBar(
-        title: Text('${poet.name} - Tüm Şiirleri'),
-        backgroundColor: const Color(0xFF2D2D3F),
-        elevation: 0,
-      ),
-      body: Consumer(
-        builder: (context, ref, child) {
-          final poemsAsyncValue = ref.watch(poemProvider);
+    return Consumer(
+      builder: (context, ref, child) {
+        final themeMode = ref.watch(themeModeProvider);
+        final isDarkTheme = themeMode == ThemeMode.dark;
 
-          return poemsAsyncValue.when(
-            data: (allPoems) {
-              // Şairin şiirlerini bul
-              final poetPoems =
-                  allPoems.where((poem) => poem.poetId == poet.id).toList();
+        final bgColor = isDarkTheme ? const Color(0xFF1E1E2C) : Colors.white;
+        final cardColor =
+            isDarkTheme ? const Color(0xFF2D2D3F) : const Color(0xFFF8F9FA);
+        final textColor = isDarkTheme ? Colors.white : Colors.black87;
+        final accentColor = const Color(0xFFE57373);
 
-              if (poetPoems.isEmpty) {
-                return const Center(
-                  child: Text(
-                    'Bu şairin şiirleri henüz eklenmemiş',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                );
-              }
+        return Scaffold(
+          backgroundColor: bgColor,
+          appBar: AppBar(
+            title: Text(
+              poet.name,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            backgroundColor: cardColor,
+            elevation: 0,
+            foregroundColor: textColor,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back, color: textColor),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          body: Consumer(
+            builder: (context, ref, child) {
+              final poetPoemsAsync = ref.watch(poetPoemsProvider);
 
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: poetPoems.length,
-                itemBuilder: (context, index) {
-                  final poem = poetPoems[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    color: const Color(0xFF2D2D3F),
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PoemDetailPage(poem: poem),
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 4,
-                                  height: 24,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE57373),
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    poem.title,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              poem.content,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 15,
-                                height: 1.5,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: poem.tags.map((tag) {
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE57373)
-                                        .withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    '#$tag',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Color(0xFFE57373),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
+              return poetPoemsAsync.when(
+                data: (poetPoems) {
+                  if (poetPoems.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'Bu şairin şiirleri henüz eklenmemiş',
+                        style: TextStyle(color: textColor.withOpacity(0.7)),
                       ),
-                    ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: poetPoems.length,
+                    itemBuilder: (context, index) {
+                      return _buildPoemCard(
+                          poetPoems[index], accentColor, textColor, cardColor);
+                    },
                   );
                 },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+                error: (error, stackTrace) => Center(
+                  child: Text(
+                    'Şiirler yüklenirken bir hata oluştu',
+                    style: TextStyle(color: textColor.withOpacity(0.7)),
+                  ),
+                ),
               );
             },
-            loading: () => const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFE57373),
-              ),
-            ),
-            error: (error, stack) => Center(
-              child: Text(
-                'Hata: $error',
-                style: const TextStyle(color: Colors.white70),
-              ),
-            ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
+  }
+
+  String _getInitial(String name) {
+    if (name.isEmpty) return '';
+    return name.substring(0, 1).toUpperCase();
   }
 }

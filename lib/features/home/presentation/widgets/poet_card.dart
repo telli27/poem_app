@@ -47,7 +47,9 @@ class PoetCard extends StatelessWidget {
                 child: Hero(
                   tag: 'poet-image-${poet.id}',
                   child: CachedNetworkImage(
-                    imageUrl: poet.imageUrl,
+                    imageUrl: poet.image.isEmpty
+                        ? 'https://via.placeholder.com/150'
+                        : poet.image,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
                       color: Theme.of(context)
@@ -101,7 +103,9 @@ class PoetCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${poet.birthDate} - ${poet.deathDate}',
+                      poet.poemCount > 0
+                          ? "${poet.poemCount} şiir"
+                          : "Şiiri yok",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

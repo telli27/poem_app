@@ -1,70 +1,51 @@
 class Poet {
   final String id;
   final String name;
-  final String birthDate;
-  final String deathDate;
-  final String biography;
-  final String imageUrl;
-  final List<String> periods;
-  final List<String> styles;
-  final List<String> notableWorks;
-  final String birthPlace;
-  final String deathPlace;
-  final List<String> influences;
-  final List<String> influencedBy;
+  final String about;
+  final String image;
+  final int poemCount;
+
+  // For backward compatibility
+  String get biography => about;
+  String get imageUrl => image;
+  String get birthDate => ""; // No equivalent in new model
+  String get deathDate => ""; // No equivalent in new model
+  List<String> get styles => []; // No equivalent in new model
 
   Poet({
     required this.id,
     required this.name,
-    required this.birthDate,
-    required this.deathDate,
-    required this.biography,
-    required this.imageUrl,
-    required this.periods,
-    required this.styles,
-    required this.notableWorks,
-    required this.birthPlace,
-    required this.deathPlace,
-    required this.influences,
-    required this.influencedBy,
+    required this.about,
+    required this.image,
+    required this.poemCount,
   });
-
-  // Get poem count from notableWorks
-  int get poemCount => notableWorks.length;
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
-      'birthDate': birthDate,
-      'deathDate': deathDate,
-      'biography': biography,
-      'imageUrl': imageUrl,
-      'periods': periods,
-      'styles': styles,
-      'notableWorks': notableWorks,
-      'birthPlace': birthPlace,
-      'deathPlace': deathPlace,
-      'influences': influences,
-      'influencedBy': influencedBy,
+      'about': about,
+      'image': image,
+      'poemCount': poemCount,
     };
   }
 
   factory Poet.fromJson(Map<String, dynamic> json) {
+    String image = json['image'] as String? ?? '';
+
+    // Fix the image URL - if it's a local asset and doesn't start with 'assets/'
+    if (image.isNotEmpty &&
+        !image.startsWith('http') &&
+        !image.startsWith('assets/')) {
+      image = 'assets/$image';
+    }
+
     return Poet(
       id: json['id'] as String,
       name: json['name'] as String,
-      birthDate: json['birthDate'] as String,
-      deathDate: json['deathDate'] as String,
-      biography: json['biography'] as String,
-      imageUrl: json['imageUrl'] as String,
-      periods: List<String>.from(json['periods'] as List),
-      styles: List<String>.from(json['styles'] as List),
-      notableWorks: List<String>.from(json['notableWorks'] as List),
-      birthPlace: json['birthPlace'] as String,
-      deathPlace: json['deathPlace'] as String,
-      influences: List<String>.from(json['influences'] as List),
-      influencedBy: List<String>.from(json['influencedBy'] as List),
+      about: json['about'] as String? ?? '',
+      image: image,
+      poemCount: json['poemCount'] as int? ?? 0,
     );
   }
 }

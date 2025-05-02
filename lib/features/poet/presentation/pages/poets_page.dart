@@ -11,17 +11,9 @@ model.Poet _convertToModelPoet(entity.Poet poet) {
   return model.Poet(
     id: poet.id,
     name: poet.name,
-    birthDate: poet.birthYear?.toString() ?? '',
-    deathDate: poet.deathYear?.toString() ?? '',
-    biography: poet.biography ?? '',
-    imageUrl: poet.imageUrl ?? '',
-    periods: [],
-    styles: [],
-    notableWorks: [],
-    birthPlace: '',
-    deathPlace: '',
-    influences: [],
-    influencedBy: [],
+    about: poet.biography ?? '',
+    image: poet.imageUrl ?? '',
+    poemCount: poet.poemCount ?? 0,
   );
 }
 

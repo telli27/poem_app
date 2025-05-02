@@ -1,55 +1,43 @@
 class Poem {
   final String id;
   final String poetId;
-  final String title;
+  final String name;
   final String content;
-  final String author;
+  final bool isFavorite;
   final String? year;
   final List<String> tags;
-  final bool isFavorite;
-  final String? imageUrl;
-  final List<String>? themes;
-  final int? readingTime;
+
+  // For compatibility with existing code
+  String get title => name;
+  String get author => poetId; // This is not ideal, but maintains compatibility
 
   Poem({
     required this.id,
     required this.poetId,
-    required this.title,
+    required this.name,
     required this.content,
-    required this.author,
-    this.year,
-    required this.tags,
     this.isFavorite = false,
-    this.imageUrl,
-    this.themes,
-    this.readingTime,
+    this.year,
+    this.tags = const [],
   });
 
   Poem copyWith({
     String? id,
     String? poetId,
-    String? title,
+    String? name,
     String? content,
-    String? author,
+    bool? isFavorite,
     String? year,
     List<String>? tags,
-    bool? isFavorite,
-    String? imageUrl,
-    List<String>? themes,
-    int? readingTime,
   }) {
     return Poem(
       id: id ?? this.id,
       poetId: poetId ?? this.poetId,
-      title: title ?? this.title,
+      name: name ?? this.name,
       content: content ?? this.content,
-      author: author ?? this.author,
+      isFavorite: isFavorite ?? this.isFavorite,
       year: year ?? this.year,
       tags: tags ?? this.tags,
-      isFavorite: isFavorite ?? this.isFavorite,
-      imageUrl: imageUrl ?? this.imageUrl,
-      themes: themes ?? this.themes,
-      readingTime: readingTime ?? this.readingTime,
     );
   }
 
@@ -57,15 +45,11 @@ class Poem {
     return {
       'id': id,
       'poetId': poetId,
-      'title': title,
+      'name': name,
       'content': content,
-      'author': author,
+      'isFavorite': isFavorite,
       'year': year,
       'tags': tags,
-      'isFavorite': isFavorite,
-      'imageUrl': imageUrl,
-      'themes': themes,
-      'readingTime': readingTime,
     };
   }
 
@@ -73,17 +57,13 @@ class Poem {
     return Poem(
       id: json['id'] as String,
       poetId: json['poetId'] as String,
-      title: json['title'] as String,
+      name: json['name'] as String,
       content: json['content'] as String,
-      author: json['author'] as String,
-      year: json['year'] as String?,
-      tags: List<String>.from(json['tags'] as List),
       isFavorite: json['isFavorite'] as bool? ?? false,
-      imageUrl: json['imageUrl'] as String?,
-      themes: json['themes'] != null
-          ? List<String>.from(json['themes'] as List)
-          : null,
-      readingTime: json['readingTime'] as int?,
+      year: json['year'] as String?,
+      tags: json['tags'] != null
+          ? List<String>.from(json['tags'] as List)
+          : const [],
     );
   }
 }
