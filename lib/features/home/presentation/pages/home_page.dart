@@ -12,6 +12,11 @@ import 'package:poemapp/models/poet.dart';
 import 'package:poemapp/services/api_service.dart';
 import 'dart:ui';
 import 'package:poemapp/features/home/providers/api_service_provider.dart';
+import 'package:poemapp/widgets/connectivity_banner.dart';
+import 'package:poemapp/widgets/loading_state_widget.dart';
+import 'package:poemapp/services/connectivity_service.dart';
+import 'package:poemapp/widgets/poet_info_widget.dart';
+import 'package:poemapp/widgets/error_widget.dart';
 
 // Restore the enum but keep it commented for reference
 enum TabSelection { discover, popular, newest }
@@ -36,391 +41,434 @@ class HomePage extends ConsumerWidget {
     final searchTerm = ref.watch(searchTermProvider);
     final isDarkMode = ref.watch(themeModeProvider) == ThemeMode.dark;
 
+    // Check if data is still loading or has error
+    final bool isLoading = poets is AsyncLoading;
+    final bool hasError = poets is AsyncError;
+
     return Scaffold(
       backgroundColor: ref.watch(themeModeProvider) == ThemeMode.dark
           ? const Color(0xFF1E1E2C) // Dark theme background
           : Colors.white, // Light theme background
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // Creative Header
-          SliverToBoxAdapter(
-            child: Animate(
-              effects: const [
-                FadeEffect(duration: Duration(milliseconds: 700)),
-              ],
-              child: Stack(
-                children: [
-                  // Background Art
-                  Container(
-                    height: 360,
-                    decoration: BoxDecoration(
-                      color: ref.watch(themeModeProvider) == ThemeMode.dark
-                          ? const Color(0xFF2D2D3F) // Dark theme surface
-                          : Colors.white, // Light theme surface
-                    ),
+      body: Stack(
+        children: [
+          // Ana sayfa yükleme hatası varsa, büyük error widget göster
+          if (hasError || (poets.value != null && poets.value!.isEmpty))
+            ErrorDisplayWidget(
+              errorMessage: hasError
+                  ? poets.error.toString()
+                  : 'Şair verisi yüklenemedi.',
+              onRetry: () {
+                // Check connectivity
+                ref.read(connectivityServiceProvider).checkConnectivity();
+                // Trigger data reload
+                ref.refresh(poetProvider);
+                ref.refresh(poemProvider);
+              },
+            ),
+
+          // Normal içerik - hatası yoksa göster
+          if (!hasError && (poets.value == null || poets.value!.isNotEmpty))
+            CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // Creative Header
+                SliverToBoxAdapter(
+                  child: Animate(
+                    effects: const [
+                      FadeEffect(duration: Duration(milliseconds: 700)),
+                    ],
                     child: Stack(
                       children: [
-                        // Design Elements
-                        Positioned(
-                          top: -40,
-                          right: -30,
-                          child: Container(
-                            height: 180,
-                            width: 180,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE57373).withOpacity(0.15),
-                              shape: BoxShape.circle,
-                            ),
+                        // Background Art
+                        Container(
+                          height: 360,
+                          decoration: BoxDecoration(
+                            color: ref.watch(themeModeProvider) ==
+                                    ThemeMode.dark
+                                ? const Color(0xFF2D2D3F) // Dark theme surface
+                                : Colors.white, // Light theme surface
                           ),
-                        ),
-                        Positioned(
-                          bottom: -60,
-                          left: -40,
-                          child: Container(
-                            height: 200,
-                            width: 200,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF64B5F6).withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                        // Content
-                        Positioned.fill(
-                          child: ClipRect(
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // App Bar
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                        30, 60, 30, 0),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          "ŞiirArt",
-                                          style: TextStyle(
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.bold,
-                                            color:
-                                                ref.watch(themeModeProvider) ==
-                                                        ThemeMode.dark
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                            letterSpacing: 1,
-                                          ),
-                                        ),
-                                        Row(
-                                          children: [
-                                            GestureDetector(
-                                              onTap: () {
-                                                ref
-                                                    .read(searchOpenProvider
-                                                        .notifier)
-                                                    .state = !isSearchOpen;
-                                              },
-                                              child: Container(
-                                                height: 42,
-                                                width: 42,
-                                                decoration: BoxDecoration(
-                                                  color: ref.watch(
-                                                              themeModeProvider) ==
-                                                          ThemeMode.dark
-                                                      ? Colors.white
-                                                          .withOpacity(0.1)
-                                                      : Colors.black
-                                                          .withOpacity(0.05),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: Icon(
-                                                  isSearchOpen
-                                                      ? Icons.close
-                                                      : Icons.search,
-                                                  color: ref.watch(
-                                                              themeModeProvider) ==
-                                                          ThemeMode.dark
-                                                      ? Colors.white
-                                                      : Colors.black,
-                                                  size: 20,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            // Tema değiştirme butonu
-                                            GestureDetector(
-                                              onTap: () {
-                                                ref
-                                                    .read(themeModeProvider
-                                                        .notifier)
-                                                    .toggleThemeMode();
-                                              },
-                                              child: Container(
-                                                height: 42,
-                                                width: 42,
-                                                decoration: BoxDecoration(
-                                                  color: ref.watch(
-                                                              themeModeProvider) ==
-                                                          ThemeMode.dark
-                                                      ? Colors.white
-                                                          .withOpacity(0.1)
-                                                      : Colors.black
-                                                          .withOpacity(0.05),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: Icon(
-                                                  ref.watch(themeModeProvider) ==
-                                                          ThemeMode.dark
-                                                      ? Icons.dark_mode
-                                                      : Icons.light_mode,
-                                                  color: ref.watch(
-                                                              themeModeProvider) ==
-                                                          ThemeMode.dark
-                                                      ? Colors.white
-                                                      : Colors.black,
-                                                  size: 20,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
+                          child: Stack(
+                            children: [
+                              // Design Elements
+                              Positioned(
+                                top: -40,
+                                right: -30,
+                                child: Container(
+                                  height: 180,
+                                  width: 180,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE57373)
+                                        .withOpacity(0.15),
+                                    shape: BoxShape.circle,
                                   ),
-
-                                  // Search Bar (conditional)
-                                  if (isSearchOpen)
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                          30, 15, 30, 0),
-                                      child: TextField(
-                                        style: TextStyle(
-                                            color:
-                                                ref.watch(themeModeProvider) ==
-                                                        ThemeMode.dark
-                                                    ? Colors.white
-                                                    : Colors.black),
-                                        onChanged: (value) {
-                                          ref
-                                              .read(searchTermProvider.notifier)
-                                              .state = value;
-                                        },
-                                        decoration: InputDecoration(
-                                          hintText: 'Şair veya şiir ara...',
-                                          hintStyle: TextStyle(
-                                              color: ref.watch(
-                                                          themeModeProvider) ==
-                                                      ThemeMode.dark
-                                                  ? Colors.white
-                                                      .withOpacity(0.5)
-                                                  : Colors.black
-                                                      .withOpacity(0.5)),
-                                          fillColor: ref.watch(
-                                                      themeModeProvider) ==
-                                                  ThemeMode.dark
-                                              ? Colors.white.withOpacity(0.1)
-                                              : Colors.black.withOpacity(0.05),
-                                          filled: true,
-                                          border: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                            borderSide: BorderSide.none,
-                                          ),
-                                          prefixIcon: Icon(Icons.search,
-                                              color: ref.watch(
-                                                          themeModeProvider) ==
-                                                      ThemeMode.dark
-                                                  ? Colors.white
-                                                  : Colors.black54),
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                            vertical: 12,
-                                            horizontal: 16,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                  // Feature Section (hidden during search)
-                                  if (!isSearchOpen)
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                            30, 20, 30, 10),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            // Big Title
-                                            Flexible(
-                                              child: Text(
-                                                "Şiirin\nİzinde",
+                                ),
+                              ),
+                              Positioned(
+                                bottom: -60,
+                                left: -40,
+                                child: Container(
+                                  height: 200,
+                                  width: 200,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF64B5F6)
+                                        .withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                              // Content
+                              Positioned.fill(
+                                child: ClipRect(
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(
+                                        sigmaX: 20, sigmaY: 20),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // App Bar
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              30, 60, 30, 0),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                "ŞiirArt",
                                                 style: TextStyle(
-                                                  fontSize: 48,
-                                                  height: 1.1,
-                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 22,
+                                                  fontWeight: FontWeight.bold,
                                                   color: ref.watch(
                                                               themeModeProvider) ==
                                                           ThemeMode.dark
                                                       ? Colors.white
                                                       : Colors.black,
-                                                  letterSpacing: -1,
+                                                  letterSpacing: 1,
                                                 ),
                                               ),
-                                            ),
-                                            const SizedBox(height: 10),
-                                            // Subtitle
-                                            Text(
-                                              "Kelimelerin büyülü dünyasına dalın",
+                                              Row(
+                                                children: [
+                                                  GestureDetector(
+                                                    onTap: () {
+                                                      ref
+                                                          .read(
+                                                              searchOpenProvider
+                                                                  .notifier)
+                                                          .state = !isSearchOpen;
+                                                    },
+                                                    child: Container(
+                                                      height: 42,
+                                                      width: 42,
+                                                      decoration: BoxDecoration(
+                                                        color: ref.watch(
+                                                                    themeModeProvider) ==
+                                                                ThemeMode.dark
+                                                            ? Colors.white
+                                                                .withOpacity(
+                                                                    0.1)
+                                                            : Colors.black
+                                                                .withOpacity(
+                                                                    0.05),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                      ),
+                                                      child: Icon(
+                                                        isSearchOpen
+                                                            ? Icons.close
+                                                            : Icons.search,
+                                                        color: ref.watch(
+                                                                    themeModeProvider) ==
+                                                                ThemeMode.dark
+                                                            ? Colors.white
+                                                            : Colors.black,
+                                                        size: 20,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  // Tema değiştirme butonu
+                                                  GestureDetector(
+                                                    onTap: () {
+                                                      ref
+                                                          .read(
+                                                              themeModeProvider
+                                                                  .notifier)
+                                                          .toggleThemeMode();
+                                                    },
+                                                    child: Container(
+                                                      height: 42,
+                                                      width: 42,
+                                                      decoration: BoxDecoration(
+                                                        color: ref.watch(
+                                                                    themeModeProvider) ==
+                                                                ThemeMode.dark
+                                                            ? Colors.white
+                                                                .withOpacity(
+                                                                    0.1)
+                                                            : Colors.black
+                                                                .withOpacity(
+                                                                    0.05),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                      ),
+                                                      child: Icon(
+                                                        ref.watch(themeModeProvider) ==
+                                                                ThemeMode.dark
+                                                            ? Icons.dark_mode
+                                                            : Icons.light_mode,
+                                                        color: ref.watch(
+                                                                    themeModeProvider) ==
+                                                                ThemeMode.dark
+                                                            ? Colors.white
+                                                            : Colors.black,
+                                                        size: 20,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        // Search Bar (conditional)
+                                        if (isSearchOpen)
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                30, 15, 30, 0),
+                                            child: TextField(
                                               style: TextStyle(
-                                                fontSize: 16,
-                                                color: ref.watch(
+                                                  color: ref.watch(
+                                                              themeModeProvider) ==
+                                                          ThemeMode.dark
+                                                      ? Colors.white
+                                                      : Colors.black),
+                                              onChanged: (value) {
+                                                ref
+                                                    .read(searchTermProvider
+                                                        .notifier)
+                                                    .state = value;
+                                              },
+                                              decoration: InputDecoration(
+                                                hintText:
+                                                    'Şair veya şiir ara...',
+                                                hintStyle: TextStyle(
+                                                    color: ref.watch(
+                                                                themeModeProvider) ==
+                                                            ThemeMode.dark
+                                                        ? Colors.white
+                                                            .withOpacity(0.5)
+                                                        : Colors.black
+                                                            .withOpacity(0.5)),
+                                                fillColor: ref.watch(
                                                             themeModeProvider) ==
                                                         ThemeMode.dark
                                                     ? Colors.white
-                                                        .withOpacity(0.7)
+                                                        .withOpacity(0.1)
                                                     : Colors.black
-                                                        .withOpacity(0.7),
-                                                letterSpacing: 0.5,
+                                                        .withOpacity(0.05),
+                                                filled: true,
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  borderSide: BorderSide.none,
+                                                ),
+                                                prefixIcon: Icon(Icons.search,
+                                                    color: ref.watch(
+                                                                themeModeProvider) ==
+                                                            ThemeMode.dark
+                                                        ? Colors.white
+                                                        : Colors.black54),
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                  vertical: 12,
+                                                  horizontal: 16,
+                                                ),
                                               ),
                                             ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
+                                          ),
 
-                                  SizedBox(height: 30),
-                                ],
+                                        // Feature Section (hidden during search)
+                                        if (!isSearchOpen)
+                                          Expanded(
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                      30, 20, 30, 10),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  // Big Title
+                                                  Flexible(
+                                                    child: Text(
+                                                      "Şiirin\nİzinde",
+                                                      style: TextStyle(
+                                                        fontSize: 48,
+                                                        height: 1.1,
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                        color: ref.watch(
+                                                                    themeModeProvider) ==
+                                                                ThemeMode.dark
+                                                            ? Colors.white
+                                                            : Colors.black,
+                                                        letterSpacing: -1,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                  // Subtitle
+                                                  Text(
+                                                    "Kelimelerin büyülü dünyasına dalın",
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      color: ref.watch(
+                                                                  themeModeProvider) ==
+                                                              ThemeMode.dark
+                                                          ? Colors.white
+                                                              .withOpacity(0.7)
+                                                          : Colors.black
+                                                              .withOpacity(0.7),
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+
+                                        const SizedBox(height: 30),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
+                ),
 
-          // Search Results (only show when search is active and has query)
-          if (isSearchOpen && searchTerm.isNotEmpty)
-            _buildSearchResults(ref, searchTerm),
+                // Search Results (only show when search is active and has query)
+                if (isSearchOpen && searchTerm.isNotEmpty)
+                  _buildSearchResults(ref, searchTerm),
 
-          // Regular content (hidden during search with results)
-          if (!isSearchOpen || searchTerm.isEmpty) ...[
-            // Feature Section Title
+                // Regular content (hidden during search with results)
+                if (!isSearchOpen || searchTerm.isEmpty) ...[
+                  // Feature Section Title
 
-            // All Poets Section
-            SliverToBoxAdapter(
-              child: Animate(
-                effects: const [
-                  FadeEffect(
-                      delay: Duration(milliseconds: 500),
-                      duration: Duration(milliseconds: 800)),
-                ],
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(30, 10, 30, 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Tüm Şairler",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: ref.watch(themeModeProvider) == ThemeMode.dark
-                              ? Colors.white
-                              : Colors.black,
+                  // All Poets Section
+                  SliverToBoxAdapter(
+                    child: Animate(
+                      effects: const [
+                        FadeEffect(
+                            delay: Duration(milliseconds: 500),
+                            duration: Duration(milliseconds: 800)),
+                      ],
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(30, 10, 30, 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Tüm Şairler",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: ref.watch(themeModeProvider) ==
+                                        ThemeMode.dark
+                                    ? Colors.white
+                                    : Colors.black,
+                              ),
+                            ),
+                            // Add poet info widget
+                            const PoetInfoWidget(),
+                          ],
                         ),
                       ),
-                      // Remove the filter button as we're showing all poets already
-                      // TextButton(
-                      //   onPressed: () {
-                      //     // Tüm şairleri göster
-                      //     Navigator.push(
-                      //       context,
-                      //       MaterialPageRoute(
-                      //         builder: (context) =>
-                      //             _buildAllPoetsPage(context, ref, selectedTab),
-                      //       ),
-                      //     );
-                      //   },
-                      //   style: TextButton.styleFrom(
-                      //     foregroundColor: const Color(0xFF4A5BCC),
-                      //     padding: EdgeInsets.zero,
-                      //     textStyle: const TextStyle(
-                      //       fontWeight: FontWeight.w600,
-                      //       fontSize: 14,
-                      //     ),
-                      //   ),
-                      //   child: const Text("Tümünü Gör"),
-                      // ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // All Poets Grid (filtered by selected tab)
-            poets.when(
-              data: (poets) {
-                // Filtre uygula
-                final filteredPoets = _filterPoetsByTab(poets, selectedTab);
-
-                return SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(15, 0, 15, 30),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.75,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 16,
                     ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        return Animate(
-                          effects: [
-                            FadeEffect(
-                              delay: Duration(milliseconds: 200 + index * 50),
-                              duration: const Duration(milliseconds: 500),
-                            ),
-                          ],
-                          child: PoetGridCard(
-                              poet: filteredPoets[index], index: index),
-                        );
+                  ),
+
+                  // All Poets Grid (filtered by selected tab)
+                  poets.when(
+                    data: (poets) {
+                      // Filtre uygula
+                      final filteredPoets =
+                          _filterPoetsByTab(poets, selectedTab);
+
+                      return SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(15, 0, 15, 30),
+                        sliver: SliverGrid(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.75,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 16,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              return Animate(
+                                effects: [
+                                  FadeEffect(
+                                    delay: Duration(
+                                        milliseconds: 200 + index * 50),
+                                    duration: const Duration(milliseconds: 500),
+                                  ),
+                                ],
+                                child: PoetGridCard(
+                                    poet: filteredPoets[index], index: index),
+                              );
+                            },
+                            childCount: filteredPoets.length,
+                          ),
+                        ),
+                      );
+                    },
+                    loading: () => const SliverToBoxAdapter(
+                      child: SizedBox
+                          .shrink(), // We'll show our custom loading state
+                    ),
+                    error: (error, stackTrace) => const SliverToBoxAdapter(
+                      child: SizedBox
+                          .shrink(), // We'll show our custom error state
+                    ),
+                  ),
+                ],
+
+                // Show loading state widget if data is loading or has error
+                if (isLoading || hasError)
+                  SliverFillRemaining(
+                    child: LoadingStateWidget(
+                      state: poets,
+                      onRetry: () {
+                        // Check connectivity first
+                        ref
+                            .read(connectivityServiceProvider)
+                            .checkConnectivity();
+                        // Refresh data
+                        ref.read(refreshDataProvider.notifier).state = true;
                       },
-                      childCount: filteredPoets.length,
                     ),
                   ),
-                );
-              },
-              loading: () => const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFFE57373)),
-                ),
-              ),
-              error: (error, stackTrace) => SliverFillRemaining(
-                child: Center(
-                  child: Text(
-                    'Bir hata oluştu',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.black.withOpacity(0.7),
-                    ),
-                  ),
-                ),
-              ),
+              ],
             ),
-          ],
+
+          // Connectivity banner at the top
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: ConnectivityBanner(),
+          ),
         ],
       ),
     );

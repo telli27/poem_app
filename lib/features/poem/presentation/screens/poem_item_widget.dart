@@ -7,12 +7,15 @@ class PoemItemWidget extends ConsumerWidget {
   final Poem poem;
   final Color textColor;
   final Color accentColor;
+  final bool
+      hidePoetId; // Bu parametre ile UUID'yi gizleyip sadece şair adını gösterme seçeneği
 
   const PoemItemWidget({
     Key? key,
     required this.poem,
     required this.textColor,
     required this.accentColor,
+    this.hidePoetId = false, // Varsayılan olarak UUID'yi gösteriyoruz
   }) : super(key: key);
 
   @override
@@ -65,38 +68,38 @@ class PoemItemWidget extends ConsumerWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ID yerine şair adını gösteriyoruz
+                // Şair adını gösteriyoruz, ID'yi değil
                 poetsAsync.when(
                   data: (poets) {
-                    // Eğer poetId bir şair adıysa (favori sayfasından geliyorsa), direkt göster
-                    if (!poem.poetId.contains('_') &&
-                        !poem.poetId.startsWith('p')) {
-                      return Text(
-                        poem.poetId, // Bu durumda poetId aslında şairin adını içeriyor
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      );
-                    }
-
-                    // Normal ID'yi şair adına çevirme
-                    try {
-                      final poet = poets.firstWhere(
-                        (p) => p.id == poem.poetId,
-                        orElse: () => throw Exception('Şair bulunamadı'),
-                      );
-                      return Text(
-                        poet.name, // Şairin adını göster
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      );
-                    } catch (e) {
-                      // Şair bulunamadıysa poetId'yi göster
+                    // Şair adını bulma mantığı
+                    if (_isUuid(poem.poetId)) {
+                      // UUID ise, şair adını bulmayı dene
+                      try {
+                        final poet = poets.firstWhere(
+                          (p) => p.id == poem.poetId,
+                          orElse: () => throw Exception('Şair bulunamadı'),
+                        );
+                        return Text(
+                          poet.name, // Şairin adını göster
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                      } catch (e) {
+                        // Şair bulunamazsa, varsayılan bir ad göster
+                        return Text(
+                          "Şair", // Genel bir ifade
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                      }
+                    } else {
+                      // UUID değilse, doğrudan poetId'yi göster (bu durumda şair adı olmalı)
                       return Text(
                         poem.poetId,
                         style: TextStyle(
@@ -116,7 +119,7 @@ class PoemItemWidget extends ConsumerWidget {
                     ),
                   ),
                   error: (_, __) => Text(
-                    "Şair bilgisi alınamadı",
+                    "Şair",
                     style: TextStyle(
                       color: textColor,
                       fontSize: 16,
@@ -138,5 +141,14 @@ class PoemItemWidget extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  // UUID formatında mı kontrol eden yardımcı metod
+  bool _isUuid(String text) {
+    // UUID formatları genellikle şunları içerir:
+    // - 32-36 karakter uzunluğunda
+    // - Tire (-) karakteri içerir
+    // - Alfanümerik karakterlerden oluşur
+    return text.length > 20 || text.contains('-');
   }
 }

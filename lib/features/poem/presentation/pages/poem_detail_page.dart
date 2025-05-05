@@ -7,6 +7,7 @@ import 'dart:ui';
 import 'package:poemapp/core/theme/theme_provider.dart';
 import 'package:poemapp/features/poem/presentation/screens/poem_item_widget.dart';
 import 'package:poemapp/providers/favorites_provider.dart';
+import 'package:poemapp/features/home/providers/poet_provider.dart';
 
 class PoemDetailPage extends ConsumerStatefulWidget {
   final Poem poem;
@@ -138,9 +139,29 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
                               const SizedBox(width: 12),
                               GestureDetector(
                                 onTap: () {
-                                  Share.share(
-                                    '${widget.poem.name}\n\n${widget.poem.content}\n\n- ${widget.poem.poetId}',
-                                  );
+                                  // Şairin adını al ve paylaş
+                                  final poetsData =
+                                      ref.read(poetProvider).valueOrNull;
+                                  if (poetsData != null) {
+                                    String poetName = "";
+                                    try {
+                                      final poet = poetsData.firstWhere(
+                                          (p) => p.id == widget.poem.poetId);
+                                      poetName = poet.name;
+                                    } catch (e) {
+                                      // Şair bulunamazsa ID'yi kullan
+                                      poetName = widget.poem.poetId;
+                                    }
+
+                                    Share.share(
+                                      '${widget.poem.name}\n\n${widget.poem.content}\n\n- $poetName',
+                                    );
+                                  } else {
+                                    // Şair verisi henüz yüklenmemişse sadece ID kullan
+                                    Share.share(
+                                      '${widget.poem.name}\n\n${widget.poem.content}\n\n- ${widget.poem.poetId}',
+                                    );
+                                  }
                                 },
                                 child: Container(
                                   height: 42,
@@ -207,6 +228,7 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
                             poem: widget.poem,
                             textColor: textColor,
                             accentColor: accentColor,
+                            hidePoetId: true,
                           ),
                         ],
                       ),
