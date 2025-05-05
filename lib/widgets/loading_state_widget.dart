@@ -99,97 +99,94 @@ class LoadingStateWidget extends ConsumerWidget {
       showAutoReloadMessage = true;
     }
 
+    // Check for specific Android network errors
+    if (errorDetails.contains('SocketException') ||
+        errorDetails.contains('HandshakeException')) {
+      message =
+          'Ağ bağlantısı hatası. Mobil veri veya Wi-Fi bağlantınızı kontrol edin.';
+      iconData = Icons.signal_wifi_connected_no_internet_4_rounded;
+    } else if (errorDetails.contains('timed out')) {
+      message =
+          'Bağlantı zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edin.';
+      iconData = Icons.timer_off_rounded;
+    }
+
     return Animate(
       effects: const [
         FadeEffect(duration: Duration(milliseconds: 400)),
       ],
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              iconData,
-              size: 64,
-              color: iconColor,
-            ),
-            const SizedBox(height: 24),
-            Text(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            iconData,
+            color: iconColor,
+            size: 64,
+          ),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Text(
               message,
-              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 color: isDarkMode ? Colors.white : Colors.black87,
               ),
+              textAlign: TextAlign.center,
             ),
-            if (showAutoReloadMessage) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.blue.withOpacity(0.3),
-                  ),
+          ),
+          if (showAutoReloadMessage)
+            Padding(
+              padding: const EdgeInsets.only(
+                  top: 16.0, left: 32.0, right: 32.0, bottom: 8.0),
+              child: Text(
+                'Bağlantı kurulduğunda veriler otomatik olarak yüklenecek.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                  fontStyle: FontStyle.italic,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Colors.blue,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        'İnternet bağlantısı kurulduğunda veriler otomatik olarak yüklenecektir.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.blue,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Tekrar Dene'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE57373),
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                textAlign: TextAlign.center,
               ),
             ),
-            if (errorDetails.isNotEmpty &&
-                !errorDetails.contains('İnternet bağlantısı yok') &&
-                !errorDetails.contains('Bağlantı kurulduğunda') &&
-                errorDetails != 'Exception: Failed to load poets')
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: Text(
-                  'Hata Detayı: $errorDetails',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Tekrar Dene'),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(
+                color: iconColor,
+                width: 1.5,
               ),
-          ],
-        ),
+              foregroundColor: iconColor,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+          ),
+          if (errorDetails.isNotEmpty &&
+              !errorDetails.contains('İnternet bağlantısı yok') &&
+              !errorDetails.contains('Bağlantı kurulduğunda') &&
+              !errorDetails.contains('SocketException') &&
+              !errorDetails.contains('timed out') &&
+              !errorDetails.contains('HandshakeException') &&
+              errorDetails != 'Exception: Failed to load poets')
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: Text(
+                'Hata Detayı: $errorDetails',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+        ],
       ),
     );
   }

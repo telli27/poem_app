@@ -82,8 +82,49 @@ class _MyAppState extends ConsumerState<MyApp> {
       final hasCachedPoets = prefs.containsKey('cached_poets_data');
       final hasCachedPoems = prefs.containsKey('cached_poems_data');
 
-      // Eğer cache'de veri yoksa, doğrudan verileri yükle
-      if (!hasCachedPoets || !hasCachedPoems) {
+      // Check if last data load was too long ago (more than 1 day)
+      final lastUpdated = prefs.getInt('data_last_updated') ?? 0;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final dayInMillis = 24 * 60 * 60 * 1000;
+      final forceRefresh = (now - lastUpdated) > dayInMillis;
+
+      if (forceRefresh) {
+        print("⚡ Son güncelleme çok eski, veriler yenilenecek");
+      }
+
+      // Check if there might be corrupted data
+      bool potentiallyCorruptedData = false;
+      if (hasCachedPoets || hasCachedPoems) {
+        try {
+          // Try to parse cached data to check for corruption
+          if (hasCachedPoets) {
+            final poetData = prefs.getString('cached_poets_data');
+            if (poetData != null) {
+              json.decode(poetData);
+            }
+          }
+          if (hasCachedPoems) {
+            final poemData = prefs.getString('cached_poems_data');
+            if (poemData != null) {
+              json.decode(poemData);
+            }
+          }
+        } catch (e) {
+          print("❌ Cache verisi bozulmuş olabilir: $e");
+          potentiallyCorruptedData = true;
+        }
+      }
+
+      // Eğer cache'de veri yoksa, veri bozulmuşsa veya cebri yenileme gerekiyorsa
+      if (!hasCachedPoets ||
+          !hasCachedPoems ||
+          potentiallyCorruptedData ||
+          forceRefresh) {
+        if (potentiallyCorruptedData) {
+          print("⚡ Bozuk cache tespit edildi, veriler temizlenecek");
+          await apiService.clearCache();
+        }
+
         _safeSetState(refreshDataProvider, true);
         print("⚡ Cache'de veri bulunamadı, veriler yüklenecek");
       } else {
@@ -103,6 +144,13 @@ class _MyAppState extends ConsumerState<MyApp> {
       await apiService.getCachedPoemInfo();
     } catch (e) {
       print("❌ Veri kontrolünde hata: $e");
+
+      // If there's an error during data initialization, ensure we don't leave the
+      // user with a permanent loading indicator
+      if (mounted) {
+        _safeSetState(poetStartupLoadingProvider, false);
+        _safeSetState(poemStartupLoadingProvider, false);
+      }
     } finally {
       // Her durumda loading göstergesini kapat
       if (mounted) {

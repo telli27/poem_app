@@ -46,7 +46,7 @@ class StartupLoadingOverlay extends ConsumerWidget {
             ],
             child: ConstrainedBox(
               constraints: const BoxConstraints(
-                maxWidth: 320,
+                maxWidth: 340,
                 maxHeight: 280,
               ),
               child: Container(
@@ -135,12 +135,16 @@ class StartupLoadingOverlay extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Text(
-                          'Şiirler kontrol ediliyor',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF2D3436),
+                        Flexible(
+                          child: Text(
+                            'Şiirler kontrol ediliyor',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF2D3436),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
                       ],
@@ -163,12 +167,16 @@ class StartupLoadingOverlay extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          'Veriler hazırlanıyor',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Colors.black.withOpacity(0.6),
-                            fontWeight: FontWeight.w400,
+                        Flexible(
+                          child: Text(
+                            'Veriler hazırlanıyor',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.black.withOpacity(0.6),
+                              fontWeight: FontWeight.w400,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
                         _buildAnimatedDots(),

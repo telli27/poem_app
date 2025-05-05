@@ -68,6 +68,18 @@ class PoemItemWidget extends ConsumerWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Year display (moved up)
+                if (poem.year != null)
+                  Text(
+                    poem.year!,
+                    style: TextStyle(
+                      color: textColor.withOpacity(0.6),
+                      fontSize: 14,
+                    ),
+                  ),
+                // Add a tiny space between year and poet name
+                if (poem.year != null) const SizedBox(height: 2),
+
                 // Şair adını gösteriyoruz, ID'yi değil
                 poetsAsync.when(
                   data: (poets) {
@@ -127,14 +139,6 @@ class PoemItemWidget extends ConsumerWidget {
                     ),
                   ),
                 ),
-                if (poem.year != null)
-                  Text(
-                    poem.year!,
-                    style: TextStyle(
-                      color: textColor.withOpacity(0.6),
-                      fontSize: 14,
-                    ),
-                  ),
               ],
             ),
           ],

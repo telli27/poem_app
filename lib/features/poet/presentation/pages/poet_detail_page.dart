@@ -228,7 +228,7 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 0),
                                 Animate(
                                   effects: const [
                                     FadeEffect(
@@ -247,7 +247,7 @@ class _PoetDetailPageState extends ConsumerState<PoetDetailPage> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 0),
                                 Row(
                                   children: [
                                     Container(

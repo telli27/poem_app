@@ -52,7 +52,15 @@ class ApiService {
 
       // No cache or parsing error, fetch from network
       print('⚡ Şairler ağdan yükleniyor...');
-      final response = await http.get(Uri.parse(poetsUrl));
+
+      // Increased timeout for Android
+      final response = await http
+          .get(Uri.parse(poetsUrl))
+          .timeout(const Duration(seconds: 20), // Increased from 5 seconds
+              onTimeout: () {
+        print('⚠️ Şairler yüklenirken zaman aşımı');
+        throw Exception('İnternet bağlantısı yavaş, lütfen tekrar deneyin');
+      });
 
       if (response.statusCode == 200) {
         // Save to SharedPreferences
@@ -70,10 +78,17 @@ class ApiService {
         print('⚡ Ağdan ${poets.length} şair yüklendi');
         return poets;
       } else {
-        throw Exception('Şairler yüklenemedi: ${response.statusCode}');
+        print('❌ HTTP Hata: ${response.statusCode} - ${response.reasonPhrase}');
+        throw Exception('Şairler yüklenemedi: HTTP ${response.statusCode}');
       }
     } catch (e) {
       print('❌ Şairler yüklenirken hata: $e');
+      // More descriptive error message
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('timed out')) {
+        throw Exception(
+            'İnternet bağlantısı zayıf. Lütfen bağlantınızı kontrol edin ve tekrar deneyin.');
+      }
       throw Exception('Şairler yüklenirken hata: $e');
     }
   }
@@ -169,7 +184,15 @@ class ApiService {
 
       // No cache or parsing error, fetch from network
       print('⚡ Şiirler ağdan yükleniyor...');
-      final response = await http.get(Uri.parse(poemsUrl));
+
+      // Increased timeout for Android
+      final response = await http
+          .get(Uri.parse(poemsUrl))
+          .timeout(const Duration(seconds: 20), // Increased from 5 seconds
+              onTimeout: () {
+        print('⚠️ Şiirler yüklenirken zaman aşımı');
+        throw Exception('İnternet bağlantısı yavaş, lütfen tekrar deneyin');
+      });
 
       if (response.statusCode == 200) {
         // Save to SharedPreferences
@@ -184,10 +207,17 @@ class ApiService {
 
         return _parsePoems(response.body);
       } else {
-        throw Exception('Şiirler yüklenemedi: ${response.statusCode}');
+        print('❌ HTTP Hata: ${response.statusCode} - ${response.reasonPhrase}');
+        throw Exception('Şiirler yüklenemedi: HTTP ${response.statusCode}');
       }
     } catch (e) {
       print('❌ Şiirler yüklenirken hata: $e');
+      // More descriptive error message
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('timed out')) {
+        throw Exception(
+            'İnternet bağlantısı zayıf. Lütfen bağlantınızı kontrol edin ve tekrar deneyin.');
+      }
       throw Exception('Şiirler yüklenirken hata: $e');
     }
   }

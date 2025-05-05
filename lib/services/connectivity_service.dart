@@ -56,23 +56,49 @@ class ConnectivityService {
 
     // Test if there's actual internet connection and its quality
     try {
-      final response = await http
-          .get(Uri.parse('https://www.google.com'))
-          .timeout(const Duration(seconds: 5));
+      // Use multiple endpoints to test connectivity in case one is blocked
+      final endpoints = [
+        'https://www.google.com',
+        'https://www.cloudflare.com',
+        'https://github.com'
+      ];
 
-      if (response.statusCode == 200) {
-        // Check connection speed by measuring response time
-        final connectionDelay = await _testConnectionSpeed();
-        if (connectionDelay > 1500) {
-          // If response time is more than 1.5 seconds, consider it a weak connection
+      // Try multiple endpoints to be more reliable on Android
+      bool hasConnectivity = false;
+      int responseTime = 10000; // Default high value
+
+      for (var endpoint in endpoints) {
+        try {
+          final stopwatch = Stopwatch()..start();
+          final response = await http
+              .get(Uri.parse(endpoint))
+              .timeout(const Duration(seconds: 8));
+          stopwatch.stop();
+
+          if (response.statusCode == 200) {
+            hasConnectivity = true;
+            responseTime = stopwatch.elapsedMilliseconds;
+            print('⚡ Bağlantı testi başarılı: $endpoint (${responseTime}ms)');
+            break; // Success with this endpoint, no need to try others
+          }
+        } catch (e) {
+          print('⚠️ $endpoint bağlantı testinde hata: $e');
+          // Continue to the next endpoint
+        }
+      }
+
+      if (hasConnectivity) {
+        if (responseTime > 2000) {
+          // If response time is more than 2 seconds, consider it a weak connection
           _updateConnectionStatusAndNotify(ConnectionStatus.weak);
         } else {
           _updateConnectionStatusAndNotify(ConnectionStatus.online);
         }
       } else {
-        _updateConnectionStatusAndNotify(ConnectionStatus.weak);
+        _updateConnectionStatusAndNotify(ConnectionStatus.offline);
       }
     } catch (e) {
+      print('❌ Bağlantı durumu güncellenirken hata: $e');
       _updateConnectionStatusAndNotify(ConnectionStatus.offline);
     }
   }
@@ -160,11 +186,29 @@ class ConnectivityService {
   Future<int> _testConnectionSpeed() async {
     final stopwatch = Stopwatch()..start();
     try {
-      await http
-          .get(Uri.parse('https://www.google.com'))
-          .timeout(const Duration(seconds: 10));
+      // Try multiple endpoints for more reliable testing
+      final endpoints = [
+        'https://www.google.com',
+        'https://www.cloudflare.com',
+        'https://github.com'
+      ];
+
+      for (var endpoint in endpoints) {
+        try {
+          await http
+              .get(Uri.parse(endpoint))
+              .timeout(const Duration(seconds: 10));
+          stopwatch.stop();
+          return stopwatch.elapsedMilliseconds;
+        } catch (e) {
+          // Try the next endpoint
+          continue;
+        }
+      }
+
+      // All endpoints failed
       stopwatch.stop();
-      return stopwatch.elapsedMilliseconds;
+      return 10000; // Assume very slow connection
     } catch (e) {
       stopwatch.stop();
       return 10000; // Assume very slow connection if there's an error
