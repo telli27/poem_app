@@ -54,6 +54,7 @@ dependencies:
   flutter_local_notifications: ^19.2.1
   permission_handler: ^11.3.1
   timezone: ^0.10.1
+  image_gallery_saver: ^2.0.3
 
 dev_dependencies:
   flutter_test:

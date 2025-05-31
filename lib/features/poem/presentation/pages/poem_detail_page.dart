@@ -3,11 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:poemapp/models/poem.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
-import 'dart:ui';
 import 'package:poemapp/core/theme/theme_provider.dart';
 import 'package:poemapp/features/poem/presentation/screens/poem_item_widget.dart';
 import 'package:poemapp/providers/favorites_provider.dart';
 import 'package:poemapp/features/home/providers/poet_provider.dart';
+import 'package:poemapp/features/share/presentation/pages/poem_share_page.dart';
+
+// Add selection providers
+final selectedTextProvider = StateProvider<String>((ref) => '');
+final isSelectionModeProvider = StateProvider<bool>((ref) => false);
+final floatingButtonPositionProvider = StateProvider<Offset?>((ref) => null);
 
 class PoemDetailPage extends ConsumerStatefulWidget {
   final Poem poem;
@@ -29,6 +34,8 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
     final themeMode = ref.watch(themeModeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
     final isFavorite = ref.watch(isPoemFavoriteProvider(widget.poem.id));
+    final isSelectionMode = ref.watch(isSelectionModeProvider);
+    final selectedText = ref.watch(selectedTextProvider);
 
     final bgColor = isDarkMode ? const Color(0xFF1E1E2C) : Colors.white;
     final cardColor =
@@ -132,6 +139,44 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
                                         ? Icons.favorite
                                         : Icons.favorite_outline,
                                     color: isFavorite ? accentColor : textColor,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Text Selection Button
+                              GestureDetector(
+                                onTap: () {
+                                  ref
+                                      .read(isSelectionModeProvider.notifier)
+                                      .state = !isSelectionMode;
+                                  if (!isSelectionMode) {
+                                    ref
+                                        .read(selectedTextProvider.notifier)
+                                        .state = '';
+                                  }
+                                },
+                                child: Container(
+                                  height: 42,
+                                  width: 42,
+                                  decoration: BoxDecoration(
+                                    color: isSelectionMode
+                                        ? const Color(0xFF7986CB)
+                                        : cardColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        offset: const Offset(0, 4),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.text_fields_rounded,
+                                    color: isSelectionMode
+                                        ? Colors.white
+                                        : textColor,
                                     size: 20,
                                   ),
                                 ),
@@ -350,8 +395,14 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
                       margin: const EdgeInsets.fromLTRB(20, 0, 20, 40),
                       padding: const EdgeInsets.all(25),
                       decoration: BoxDecoration(
-                        color: cardColor,
+                        color: isSelectionMode
+                            ? cardColor.withOpacity(0.8)
+                            : cardColor,
                         borderRadius: BorderRadius.circular(20),
+                        border: isSelectionMode
+                            ? Border.all(
+                                color: const Color(0xFF7986CB), width: 2)
+                            : null,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.08),
@@ -363,26 +414,220 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Selection mode indicator
+                          if (isSelectionMode)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 15),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF7986CB)
+                                                .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                selectedText.isEmpty
+                                                    ? Icons.touch_app_rounded
+                                                    : Icons
+                                                        .check_circle_rounded,
+                                                color: const Color(0xFF7986CB),
+                                                size: 18,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Flexible(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      selectedText.isNotEmpty
+                                                          ? "✓ Metin seçildi"
+                                                          : "Kart yapmak için kelimeleri seçin",
+                                                      style: TextStyle(
+                                                        color: const Color(
+                                                            0xFF7986CB),
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                    if (selectedText
+                                                        .isNotEmpty) ...[
+                                                      const SizedBox(height: 4),
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            child:
+                                                                LinearProgressIndicator(
+                                                              value: selectedText
+                                                                      .length /
+                                                                  400,
+                                                              backgroundColor:
+                                                                  const Color(
+                                                                          0xFF7986CB)
+                                                                      .withOpacity(
+                                                                          0.2),
+                                                              valueColor:
+                                                                  AlwaysStoppedAnimation<
+                                                                      Color>(
+                                                                selectedText.length >=
+                                                                        400
+                                                                    ? Colors
+                                                                        .orange
+                                                                    : const Color(
+                                                                        0xFF7986CB),
+                                                              ),
+                                                              minHeight: 3,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                              width: 8),
+                                                          Text(
+                                                            "${selectedText.length}/400",
+                                                            style: TextStyle(
+                                                              color: selectedText
+                                                                          .length >=
+                                                                      400
+                                                                  ? Colors
+                                                                      .orange
+                                                                  : const Color(
+                                                                      0xFF7986CB),
+                                                              fontSize: 10,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      if (selectedText.isNotEmpty) ...[
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () {
+                                            ref
+                                                .read(selectedTextProvider
+                                                    .notifier)
+                                                .state = '';
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  Colors.red.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Icon(
+                                              Icons.clear_rounded,
+                                              color: Colors.red,
+                                              size: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.only(left: 15),
                             decoration: BoxDecoration(
                               border: Border(
                                 left: BorderSide(
-                                  color: accentColor,
+                                  color: isSelectionMode
+                                      ? const Color(0xFF7986CB)
+                                      : accentColor,
                                   width: 2,
                                 ),
                               ),
                             ),
-                            child: Text(
-                              widget.poem.content,
-                              style: TextStyle(
-                                fontSize: _fontSize,
-                                color: textColor,
-                                height: 1.8,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
+                            child: isSelectionMode
+                                ? SelectableText(
+                                    widget.poem.content,
+                                    style: TextStyle(
+                                      fontSize: _fontSize,
+                                      color: textColor,
+                                      height: 1.8,
+                                      letterSpacing: 0.3,
+                                    ),
+                                    onSelectionChanged: (selection, cause) {
+                                      if (selection.baseOffset !=
+                                          selection.extentOffset) {
+                                        final selectedPortion =
+                                            widget.poem.content.substring(
+                                          selection.baseOffset,
+                                          selection.extentOffset,
+                                        );
+                                        // Limit to 400 characters
+                                        if (selectedPortion.length <= 400) {
+                                          ref
+                                              .read(
+                                                  selectedTextProvider.notifier)
+                                              .state = selectedPortion;
+                                        } else {
+                                          // Take only first 400 characters
+                                          final limitedText =
+                                              selectedPortion.substring(0, 400);
+                                          ref
+                                              .read(
+                                                  selectedTextProvider.notifier)
+                                              .state = limitedText;
+
+                                          // Show feedback
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                  "Maksimum 400 karakter seçebilirsiniz"),
+                                              backgroundColor: Colors.orange,
+                                              duration: Duration(seconds: 2),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        }
+                                      } else {
+                                        // Clear selection when no text is selected
+                                        ref
+                                            .read(selectedTextProvider.notifier)
+                                            .state = '';
+                                      }
+                                    },
+                                    selectionControls:
+                                        MaterialTextSelectionControls(),
+                                  )
+                                : SingleChildScrollView(
+                                    child: Text(
+                                      widget.poem.content,
+                                      style: TextStyle(
+                                        fontSize: _fontSize,
+                                        color: textColor,
+                                        height: 1.8,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ),
                           ),
                         ],
                       ),
@@ -480,6 +725,167 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
               ],
             ),
           ),
+
+          // Floating Card Creation Widget
+          if (selectedText.isNotEmpty && isSelectionMode)
+            Positioned(
+              bottom: 30,
+              right: 20,
+              child: GestureDetector(
+                onTap: () {
+                  // Create modified poem with selected text
+                  final modifiedPoem = Poem(
+                    id: widget.poem.id,
+                    name: widget.poem.name,
+                    content: selectedText,
+                    poetId: widget.poem.poetId,
+                    tags: widget.poem.tags,
+                  );
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PoemSharePage(poem: modifiedPoem),
+                    ),
+                  ).then((_) {
+                    // Clear selection when returning
+                    ref.read(selectedTextProvider.notifier).state = '';
+                    ref.read(isSelectionModeProvider.notifier).state = false;
+                  });
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF667eea),
+                            const Color(0xFF764ba2),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF667eea).withOpacity(0.4),
+                            offset: const Offset(0, 6),
+                            blurRadius: 16,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Center(
+                            child: Icon(
+                              Icons.palette_rounded,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                          // Badge with character count
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: selectedText.length >= 400
+                                    ? Colors.orange
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    offset: const Offset(0, 2),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                "${selectedText.length}",
+                                style: TextStyle(
+                                  color: selectedText.length >= 400
+                                      ? Colors.white
+                                      : const Color(0xFF667eea),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white,
+                            const Color(0xFFF8F9FA),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            offset: const Offset(0, 2),
+                            blurRadius: 8,
+                          ),
+                        ],
+                        border: Border.all(
+                          color: const Color(0xFF667eea).withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.auto_awesome_rounded,
+                            color: const Color(0xFF667eea),
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            selectedText.length <= 50
+                                ? "Kart Oluştur"
+                                : "${selectedText.length}/400",
+                            style: TextStyle(
+                              color: const Color(0xFF667eea),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+                  .animate()
+                  .scale(
+                    begin: const Offset(0, 0),
+                    end: const Offset(1, 1),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.elasticOut,
+                  )
+                  .fadeIn(
+                    duration: const Duration(milliseconds: 200),
+                  ),
+            ),
         ],
       ),
     );
