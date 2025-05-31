@@ -17,6 +17,7 @@ import 'package:poemapp/widgets/loading_state_widget.dart';
 import 'package:poemapp/services/connectivity_service.dart';
 import 'package:poemapp/widgets/poet_info_widget.dart';
 import 'package:poemapp/widgets/error_widget.dart';
+import 'package:poemapp/features/mood/presentation/pages/mood_based_poem_page.dart';
 
 // Restore the enum but keep it commented for reference
 enum TabSelection { discover, popular, newest }
@@ -28,6 +29,11 @@ final selectedTabProvider =
 final searchOpenProvider = StateProvider<bool>((ref) => false);
 final searchTermProvider = StateProvider<String>((ref) => '');
 final refreshDataProvider = StateProvider<bool>((ref) => false);
+final moodCardVisibleProvider = StateProvider<bool>((ref) => true);
+
+// Add mood providers
+final selectedMoodProvider = StateProvider<String?>((ref) => null);
+final moodPoemsProvider = StateProvider<List<dynamic>>((ref) => []);
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -40,6 +46,11 @@ class HomePage extends ConsumerWidget {
     final isSearchOpen = ref.watch(searchOpenProvider);
     final searchTerm = ref.watch(searchTermProvider);
     final isDarkMode = ref.watch(themeModeProvider) == ThemeMode.dark;
+
+    // Reset mood card visibility when returning to home page
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(moodCardVisibleProvider.notifier).state = true;
+    });
 
     // Check if data is still loading or has error
     final bool isLoading = poets is AsyncLoading;
@@ -363,6 +374,36 @@ class HomePage extends ConsumerWidget {
 
                 // Regular content (hidden during search with results)
                 if (!isSearchOpen || searchTerm.isEmpty) ...[
+                  // Mood-based Poem Recommendation Feature
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final isMoodCardVisible =
+                          ref.watch(moodCardVisibleProvider);
+
+                      if (!isMoodCardVisible) {
+                        return const SliverToBoxAdapter(
+                          child: SizedBox.shrink(),
+                        );
+                      }
+
+                      return SliverToBoxAdapter(
+                        child: Animate(
+                          effects: const [
+                            FadeEffect(
+                                delay: Duration(milliseconds: 300),
+                                duration: Duration(milliseconds: 800)),
+                            SlideEffect(
+                                begin: Offset(0, 0.3),
+                                delay: Duration(milliseconds: 300),
+                                duration: Duration(milliseconds: 800)),
+                          ],
+                          child:
+                              _buildMoodRecommendationSection(ref, isDarkMode),
+                        ),
+                      );
+                    },
+                  ),
+
                   // Feature Section Title
 
                   // All Poets Section
@@ -1347,6 +1388,157 @@ class HomePage extends ConsumerWidget {
       ),
     );
     return poet.name;
+  }
+
+  // Add mood recommendation section method
+  Widget _buildMoodRecommendationSection(WidgetRef ref, bool isDarkMode) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      child: Builder(
+        builder: (context) => GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MoodBasedPoemPage(),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF7986CB).withOpacity(0.1),
+                  const Color(0xFF5C6BC0).withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF7986CB).withOpacity(0.2),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Row(
+                  children: [
+                    // Icon section
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7986CB).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.psychology_rounded,
+                            color: const Color(0xFF7986CB),
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "💕😢🌟🌿",
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+
+                    // Content section
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Ruh Halime Göre Şiir Bul",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Bugün nasıl hissediyorsun? Sana özel şiirler keşfet",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDarkMode
+                                  ? Colors.white.withOpacity(0.7)
+                                  : Colors.black.withOpacity(0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Arrow icon (keep for navigation hint)
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      color: const Color(0xFF7986CB),
+                      size: 18,
+                    ),
+                  ],
+                ),
+
+                // Close button in top right corner
+                Positioned(
+                  top: -6,
+                  right: -6,
+                  child: GestureDetector(
+                    onTap: () {
+                      ref.read(moodCardVisibleProvider.notifier).state = false;
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: isDarkMode
+                            ? Colors.black.withOpacity(0.4)
+                            : Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: isDarkMode
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.black.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: isDarkMode
+                            ? Colors.white.withOpacity(0.9)
+                            : Colors.black.withOpacity(0.8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
