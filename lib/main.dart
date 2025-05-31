@@ -5,13 +5,19 @@ import 'package:poemapp/core/theme/app_theme.dart';
 import 'package:poemapp/core/theme/theme_provider.dart';
 import 'package:poemapp/features/main/presentation/pages/main_page.dart';
 import 'package:poemapp/services/favorites_service.dart';
+import 'package:poemapp/services/daily_poem_service.dart';
+import 'package:poemapp/services/notification_service.dart';
 import 'package:poemapp/services/connectivity_service.dart';
 import 'package:poemapp/features/home/providers/poet_provider.dart';
 import 'package:poemapp/features/home/providers/poem_provider.dart';
 import 'package:poemapp/services/api_service.dart';
+import 'package:poemapp/features/poem/presentation/pages/poem_detail_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+// Global navigator key for navigation from notifications
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 // Provider to track app startup time for connectivity banner delay
 final appStartTimeProvider = Provider<int>((ref) {
@@ -21,8 +27,22 @@ final appStartTimeProvider = Provider<int>((ref) {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive
+  // Initialize Hive for favorites
   await FavoritesService.init();
+
+  // Initialize Daily Poem Service
+  await DailyPoemService.init();
+
+  // Initialize Notification Service
+  await NotificationService.init();
+
+  // Setup notification tap handler
+  DailyPoemService.onNotificationTap = (String? payload) {
+    print("📱 Notification tapped with payload: $payload");
+    if (payload != null) {
+      _handleNotificationTap(payload);
+    }
+  };
 
   // Uygulama başlatma
   runApp(
@@ -30,6 +50,117 @@ void main() async {
       child: MyApp(),
     ),
   );
+}
+
+// Handle notification tap navigation
+void _handleNotificationTap(String payload) async {
+  print("📱 ===== NOTIFICATION TAP HANDLER CALLED =====");
+  print("📱 Raw payload: $payload");
+
+  try {
+    final payloadData = json.decode(payload) as Map<String, dynamic>;
+    print("📱 Parsed notification payload: $payloadData");
+    print("📱 Payload type: ${payloadData['type']}");
+
+    if (payloadData['type'] == 'daily_poem') {
+      final poemId = payloadData['poem_id'] as String?;
+      final poetId = payloadData['poet_id'] as String?;
+
+      print("📱 Poem ID: $poemId");
+      print("📱 Poet ID: $poetId");
+
+      if (poemId != null && poetId != null) {
+        print("📱 Attempting to navigate to poem detail...");
+
+        // Simple approach: wait a bit then try navigation
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // Check if navigator is available
+        if (navigatorKey.currentState == null) {
+          print("❌ Navigator state is null!");
+          return;
+        }
+
+        print("📱 Navigator state is available, fetching poem...");
+
+        // Get the poem from daily poem service first (faster)
+        try {
+          final todaysPoem = await DailyPoemService.getTodaysPoemService();
+          if (todaysPoem != null && todaysPoem.id == poemId) {
+            print("📱 Found today's poem, navigating...");
+            navigatorKey.currentState!.push(
+              MaterialPageRoute(
+                builder: (context) => PoemDetailPage(
+                  poem: todaysPoem,
+                ),
+              ),
+            );
+            return;
+          }
+        } catch (e) {
+          print("❌ Error getting today's poem: $e");
+        }
+
+        // Fallback: get from last notification poem
+        try {
+          final lastPoem = await DailyPoemService.getLastNotificationPoem();
+          if (lastPoem != null) {
+            print("📱 Using last notification poem, navigating...");
+            navigatorKey.currentState!.push(
+              MaterialPageRoute(
+                builder: (context) => PoemDetailPage(
+                  poem: lastPoem,
+                ),
+              ),
+            );
+            return;
+          }
+        } catch (e) {
+          print("❌ Error getting last notification poem: $e");
+        }
+
+        // Final fallback: try to fetch from API
+        try {
+          print("📱 Final fallback: fetching from API...");
+          final apiService = ApiService();
+          final allPoems = await apiService.fetchPoems();
+
+          final poem = allPoems.firstWhere((p) => p.id == poemId);
+          print("📱 Found poem from API, navigating...");
+
+          navigatorKey.currentState!.push(
+            MaterialPageRoute(
+              builder: (context) => PoemDetailPage(
+                poem: poem,
+              ),
+            ),
+          );
+        } catch (e) {
+          print("❌ All fallbacks failed: $e");
+          // Show a simple message to user
+          if (navigatorKey.currentState?.context != null) {
+            ScaffoldMessenger.of(navigatorKey.currentState!.context)
+                .showSnackBar(
+              const SnackBar(
+                content: Text(
+                    "Şiir detayı açılamadı. Lütfen uygulamayı açıp tekrar deneyin."),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      } else {
+        print("❌ Missing poem ID or poet ID in payload");
+      }
+    } else {
+      print("❌ Unknown notification type: ${payloadData['type']}");
+    }
+  } catch (e) {
+    print("❌ Error handling notification tap: $e");
+    print("❌ Stack trace: ${StackTrace.current}");
+  }
+
+  print("📱 ===== NOTIFICATION TAP HANDLER END =====");
 }
 
 class MyApp extends ConsumerStatefulWidget {
@@ -142,6 +273,14 @@ class _MyAppState extends ConsumerState<MyApp> {
       // Perform an update of poet and poem count metadata
       await apiService.getCachedPoetInfo();
       await apiService.getCachedPoemInfo();
+
+      // Force refresh the info providers after data is potentially loaded
+      if (mounted) {
+        // Invalidate info providers to get updated counts
+        ref.invalidate(poetInfoProvider);
+        ref.invalidate(poemInfoProvider);
+        print("⚡ Info provider'ları yenilendi");
+      }
     } catch (e) {
       print("❌ Veri kontrolünde hata: $e");
 
@@ -181,6 +320,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
+      navigatorKey: navigatorKey,
       home: const MainPage(),
     );
   }

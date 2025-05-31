@@ -95,6 +95,12 @@ final poemProviderListener = Provider<void>((ref) {
       // Reset the refresh flag when the provider is done (either success or error)
       if (previous?.isLoading == true && !next.isLoading) {
         resetPoemRefreshFlag(ref);
+
+        // Also refresh the poem info provider to update counts
+        if (next.hasValue && next.value!.isNotEmpty) {
+          ref.invalidate(poemInfoProvider);
+          print("⚡ Poem info provider yenilendi");
+        }
       }
     },
   );
