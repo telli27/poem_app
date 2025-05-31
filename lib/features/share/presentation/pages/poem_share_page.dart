@@ -16,6 +16,7 @@ import 'dart:math' as math;
 final shareCardThemeProvider = StateProvider<int>((ref) => 0);
 final shareTextSizeProvider = StateProvider<double>((ref) => 16.0);
 final customFooterTextProvider = StateProvider<String>((ref) => "");
+final saveProgressProvider = StateProvider<double>((ref) => 0.0);
 
 class PoemSharePage extends ConsumerStatefulWidget {
   final dynamic poem;
@@ -148,6 +149,7 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
   Widget build(BuildContext context) {
     final selectedTheme = ref.watch(shareCardThemeProvider);
     final textSize = ref.watch(shareTextSizeProvider);
+    final progress = ref.watch(saveProgressProvider);
     final screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
@@ -159,14 +161,46 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.download_rounded),
+            icon: _isGeneratingImage
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.download_rounded),
             onPressed: _isGeneratingImage ? null : _saveToGallery,
+            tooltip: _isGeneratingImage ? "Kaydediliyor..." : "Galeriye Kaydet",
           ),
           IconButton(
-            icon: const Icon(Icons.share_rounded),
+            icon: _isGeneratingImage
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.share_rounded),
             onPressed: _isGeneratingImage ? null : _shareCard,
+            tooltip: _isGeneratingImage ? "İşleniyor..." : "Paylaş",
           ),
         ],
+        // Progress bar as bottom widget
+        bottom: progress > 0 && progress < 1
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(4),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  backgroundColor: Colors.grey.withOpacity(0.3),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(Color(0xFF7986CB)),
+                ),
+              )
+            : null,
       ),
       body: SafeArea(
         child: Column(
@@ -181,44 +215,50 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
                     constraints: BoxConstraints(
                       maxWidth: screenSize.width * 0.9,
                     ),
-                    child: RepaintBoundary(
-                      key: _cardKey,
-                      child: _buildShareCard(selectedTheme, textSize),
-                    ),
+                    child: _buildShareCard(selectedTheme, textSize),
                   ),
                 ),
               ),
             ),
 
-            // Controls - Fixed height and scrollable
+            // Controls - Compact design
             Container(
-              height: 320,
+              height: 180,
               width: double.infinity,
               decoration: const BoxDecoration(
                 color: Color(0xFF2D2D3F),
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
               ),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Theme selection
-                    const Text(
-                      "🎨 Tema Seç",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    // Tema seçimi - daha kompakt
+                    Row(
+                      children: [
+                        const Text(
+                          "🎨",
+                          style: TextStyle(fontSize: 18),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          "Tema",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     SizedBox(
-                      height: 70,
+                      height: 50,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: themes.length,
@@ -231,53 +271,25 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
                                   index;
                             },
                             child: Container(
-                              width: 60,
+                              width: 40,
+                              height: 40,
                               margin: EdgeInsets.only(
-                                right: index == themes.length - 1 ? 0 : 10,
+                                right: index == themes.length - 1 ? 0 : 8,
                               ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    height: 45,
-                                    width: 45,
-                                    decoration: BoxDecoration(
-                                      gradient: theme.background,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: isSelected
-                                          ? Border.all(
-                                              color: Colors.white, width: 2)
-                                          : Border.all(
-                                              color:
-                                                  Colors.white.withOpacity(0.3),
-                                              width: 1),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        theme.emoji,
-                                        style: const TextStyle(fontSize: 16),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Flexible(
-                                    child: Text(
-                                      theme.name.split(' ').take(2).join(' '),
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : Colors.white.withOpacity(0.6),
-                                        fontSize: 9,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.w400,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
+                              decoration: BoxDecoration(
+                                gradient: theme.background,
+                                borderRadius: BorderRadius.circular(10),
+                                border: isSelected
+                                    ? Border.all(color: Colors.white, width: 2)
+                                    : Border.all(
+                                        color: Colors.white.withOpacity(0.3),
+                                        width: 1),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  theme.emoji,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
                               ),
                             ),
                           );
@@ -285,89 +297,120 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
-                    // Text size control
-                    const Text(
-                      "📝 Yazı Boyutu",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                    // Yazı boyutu ve Filigran yan yana
                     Row(
                       children: [
-                        Icon(Icons.text_fields,
-                            color: Colors.white.withOpacity(0.7), size: 20),
+                        // Yazı boyutu - sol yarı
                         Expanded(
-                          child: Slider(
-                            value: textSize,
-                            min: 12.0,
-                            max: 20.0,
-                            divisions: 8,
-                            activeColor: const Color(0xFF7986CB),
-                            inactiveColor: Colors.white.withOpacity(0.3),
-                            onChanged: (value) {
-                              ref.read(shareTextSizeProvider.notifier).state =
-                                  value;
-                            },
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Text("📝",
+                                      style: TextStyle(fontSize: 16)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "Boyut ${textSize.round()}",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              SliderTheme(
+                                data: SliderTheme.of(context).copyWith(
+                                  trackHeight: 3,
+                                  thumbShape: const RoundSliderThumbShape(
+                                      enabledThumbRadius: 8),
+                                ),
+                                child: Slider(
+                                  value: textSize,
+                                  min: 12.0,
+                                  max: 20.0,
+                                  divisions: 8,
+                                  activeColor: const Color(0xFF7986CB),
+                                  inactiveColor: Colors.white.withOpacity(0.3),
+                                  onChanged: (value) {
+                                    ref
+                                        .read(shareTextSizeProvider.notifier)
+                                        .state = value;
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Text(
-                          "${textSize.round()}",
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 14),
+
+                        const SizedBox(width: 16),
+
+                        // Filigran - sağ yarı
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Text("🏷️",
+                                      style: TextStyle(fontSize: 16)),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    "Filigran",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                      color: Colors.white.withOpacity(0.3)),
+                                ),
+                                child: TextField(
+                                  onChanged: (value) {
+                                    ref
+                                        .read(customFooterTextProvider.notifier)
+                                        .state = value;
+                                  },
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 12),
+                                  decoration: InputDecoration(
+                                    hintText: "Özel filigran",
+                                    hintStyle: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
+                                      fontSize: 11,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 8,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.copyright_rounded,
+                                      color: Colors.white.withOpacity(0.6),
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Custom footer text control
-                    const Text(
-                      "🏷️ Filigran",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: Colors.white.withOpacity(0.3)),
-                      ),
-                      child: TextField(
-                        onChanged: (value) {
-                          ref.read(customFooterTextProvider.notifier).state =
-                              value;
-                        },
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText:
-                              "Özel filigran yazın (boş bırakırsanız ŞiirArt)",
-                          hintStyle: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
-                            fontSize: 12,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          prefixIcon: Icon(
-                            Icons.copyright_rounded,
-                            color: Colors.white.withOpacity(0.7),
-                            size: 18,
-                          ),
-                        ),
-                      ),
                     ),
                   ],
                 ),
@@ -383,6 +426,15 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
     final theme = themes[themeIndex];
     final poem = widget.poem;
 
+    // Wrap the entire card with RepaintBoundary for clean capture
+    return RepaintBoundary(
+      key: _cardKey,
+      child: _buildThemeCard(themeIndex, theme, textSize, poem),
+    );
+  }
+
+  Widget _buildThemeCard(
+      int themeIndex, ShareCardTheme theme, double textSize, dynamic poem) {
     // Different design for each theme
     switch (themeIndex) {
       case 0: // Gece Mavisi - Minimalist Night Theme
@@ -417,13 +469,6 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
       decoration: BoxDecoration(
         gradient: theme.background,
         borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 40,
-            offset: const Offset(0, 20),
-          ),
-        ],
       ),
       child: Stack(
         children: [
@@ -518,13 +563,6 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
         gradient: theme.background,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(color: theme.accentColor.withOpacity(0.6), width: 3),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.pink.withOpacity(0.4),
-            blurRadius: 30,
-            offset: const Offset(0, 15),
-          ),
-        ],
       ),
       child: Stack(
         children: [
@@ -598,13 +636,6 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
                     borderRadius: BorderRadius.circular(25),
                     border: Border.all(
                         color: theme.accentColor.withOpacity(0.6), width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.pink.withOpacity(0.2),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
                   ),
                   child: Text(
                     '"${_formatPoemContent(poem.content)}"',
@@ -1687,30 +1718,101 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
     });
 
     try {
-      // Request permission
-      final permission = await Permission.storage.request();
-      if (!permission.isGranted) {
-        _showSnackBar("Galeri izni gerekli");
+      // Reset progress
+      ref.read(saveProgressProvider.notifier).state = 0.0;
+      _showSnackBar("Kart hazırlanıyor... ⏳ 0%");
+
+      // Step 1: Generate image (50%)
+      ref.read(saveProgressProvider.notifier).state = 0.5;
+      _showSnackBar("Resim oluşturuluyor... 🎨 50%");
+
+      final imageBytes = await _generateImage();
+
+      if (imageBytes.isEmpty) {
+        _showSnackBar("❌ Resim oluşturma hatası");
         return;
       }
 
-      // Generate image
-      final imageBytes = await _generateImage();
+      // Step 2: Save to gallery (100%)
+      ref.read(saveProgressProvider.notifier).state = 0.9;
+      _showSnackBar("Galeriye kaydediliyor... 💾 90%");
 
-      // Save to gallery
-      final result = await ImageGallerySaver.saveImage(
-        imageBytes,
-        quality: 100,
-        name: "siir_${DateTime.now().millisecondsSinceEpoch}",
-      );
+      // Try saving with better error handling
+      bool success = false;
+      String? errorMsg;
 
-      if (result['isSuccess']) {
-        _showSnackBar("Kart galeriye kaydedildi! 📱");
+      try {
+        final result = await ImageGallerySaver.saveImage(
+          imageBytes,
+          quality: 100,
+          name: "ŞiirArt_${DateTime.now().millisecondsSinceEpoch}",
+          isReturnImagePathOfIOS: true,
+        );
+
+        print("Save result: $result");
+        print("Result type: ${result.runtimeType}");
+
+        if (result != null) {
+          if (result is Map) {
+            success = result['isSuccess'] == true;
+            errorMsg = result['errorMessage']?.toString();
+            print("Map result - success: $success, error: $errorMsg");
+          } else if (result is String) {
+            success = result.isNotEmpty;
+            print("String result: $result");
+          } else {
+            success = true;
+            print("Other result type, assuming success");
+          }
+        }
+      } catch (saveError) {
+        print("ImageGallerySaver error: $saveError");
+        errorMsg = saveError.toString();
+      }
+
+      // Complete (100%)
+      ref.read(saveProgressProvider.notifier).state = 1.0;
+
+      if (success) {
+        _showSnackBar("✅ Kart başarıyla galeriye kaydedildi! 📱 100%");
+
+        // Show preview dialog
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _showSavedImageDialog(imageBytes);
+        });
+
+        // iOS için extra kontrol - Gerçekten kaydedildi mi?
+        if (Platform.isIOS) {
+          Future.delayed(const Duration(seconds: 3), () {
+            _showSnackBar("📱 Fotoğraflar uygulamasını kontrol edin");
+          });
+
+          // iOS'ta alternatif yöntem öner
+          Future.delayed(const Duration(seconds: 5), () {
+            _showSnackBar("💡 Göremiyorsanız: Paylaş → Fotoğraflar'a Kaydet");
+          });
+        }
+
+        // Reset progress after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          ref.read(saveProgressProvider.notifier).state = 0.0;
+        });
       } else {
-        _showSnackBar("Kaydetme hatası");
+        _showSnackBar(
+            "❌ Kaydetme başarısız${errorMsg != null ? ': $errorMsg' : ''}");
+        ref.read(saveProgressProvider.notifier).state = 0.0;
+
+        // iOS'ta başarısız olursa alternative yöntem öner
+        if (Platform.isIOS) {
+          Future.delayed(const Duration(seconds: 2), () {
+            _showSnackBar("💡 Alternatif: Paylaş butonunu kullanın");
+          });
+        }
       }
     } catch (e) {
-      _showSnackBar("Hata: $e");
+      print("Error in _saveToGallery: $e");
+      _showSnackBar("❌ Hata: ${e.toString()}");
+      ref.read(saveProgressProvider.notifier).state = 0.0;
     } finally {
       setState(() {
         _isGeneratingImage = false;
@@ -1726,7 +1828,232 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
     });
 
     try {
+      _showSnackBar("Paylaşım hazırlanıyor... ⏳");
+
       final imageBytes = await _generateImage();
+
+      _showSnackBar("Kart oluşturuluyor... 🎨");
+
+      // Save to temporary directory
+      final tempDir = await getTemporaryDirectory();
+      final file = File(
+          '${tempDir.path}/poem_card_${DateTime.now().millisecondsSinceEpoch}.png');
+      await file.writeAsBytes(imageBytes);
+
+      if (Platform.isIOS) {
+        _showSnackBar(
+            "📤 Paylaşım menüsü açılıyor... (Fotoğraflar'a Kaydet seçin)");
+      } else {
+        _showSnackBar("📤 Paylaşım menüsü açılıyor...");
+      }
+
+      // Share
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: '${widget.poem.name} - ŞiirArt uygulamasından paylaşıldı',
+      );
+
+      // Success message will show after user returns from share menu
+      if (Platform.isIOS) {
+        _showSnackBar(
+            "✅ Paylaşım başlatıldı! (Fotoğraflar'a Kaydet = %100 güvenilir)");
+      } else {
+        _showSnackBar("✅ Paylaşım başlatıldı!");
+      }
+    } catch (e) {
+      _showSnackBar("❌ Paylaşım hatası: $e");
+    } finally {
+      setState(() {
+        _isGeneratingImage = false;
+      });
+    }
+  }
+
+  Future<Uint8List> _generateImage() async {
+    try {
+      // Add more time to ensure widget is fully rendered
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      final RenderRepaintBoundary? boundary =
+          _cardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+
+      if (boundary == null) {
+        throw Exception("Render boundary bulunamadı");
+      }
+
+      // Higher pixel ratio for better quality (4x instead of 3x)
+      final ui.Image image = await boundary.toImage(pixelRatio: 4.0);
+      final ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+
+      if (byteData == null) {
+        throw Exception("Resim verisi oluşturulamadı");
+      }
+
+      return byteData.buffer.asUint8List();
+    } catch (e) {
+      throw Exception("Resim oluşturma hatası: $e");
+    }
+  }
+
+  void _showSnackBar(String message) {
+    // Determine color based on message content
+    Color backgroundColor;
+    if (message.contains("✅")) {
+      backgroundColor = Colors.green;
+    } else if (message.contains("❌")) {
+      backgroundColor = Colors.red;
+    } else if (message.contains("⏳") ||
+        message.contains("🎨") ||
+        message.contains("💾") ||
+        message.contains("📤")) {
+      backgroundColor = const Color(0xFF7986CB);
+    } else {
+      backgroundColor = const Color(0xFF7986CB);
+    }
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(
+          seconds: message.contains("✅") || message.contains("❌") ? 3 : 2,
+        ),
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
+  void _showSavedImageDialog(Uint8List imageBytes) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2D2D3F),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: const BoxDecoration(
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          "Kart Başarıyla Kaydedildi!",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close, color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Image Preview
+                Flexible(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(
+                        imageBytes,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Action Buttons
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _shareImageBytes(imageBytes);
+                      },
+                      icon: const Icon(Icons.share, size: 20),
+                      label: const Text("Tekrar Paylaş"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7986CB),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _shareImageBytes(Uint8List imageBytes) async {
+    try {
+      _showSnackBar("Paylaşım hazırlanıyor... 📤");
 
       // Save to temporary directory
       final tempDir = await getTemporaryDirectory();
@@ -1739,34 +2066,11 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
         [XFile(file.path)],
         text: '${widget.poem.name} - ŞiirArt uygulamasından paylaşıldı',
       );
+
+      _showSnackBar("✅ Paylaşım başlatıldı!");
     } catch (e) {
-      _showSnackBar("Paylaşım hatası: $e");
-    } finally {
-      setState(() {
-        _isGeneratingImage = false;
-      });
+      _showSnackBar("❌ Paylaşım hatası: $e");
     }
-  }
-
-  Future<Uint8List> _generateImage() async {
-    final RenderRepaintBoundary boundary =
-        _cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-
-    final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-    final ByteData? byteData =
-        await image.toByteData(format: ui.ImageByteFormat.png);
-
-    return byteData!.buffer.asUint8List();
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFF7986CB),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 }
 

@@ -56,5 +56,11 @@
 	<!-- Privacy description for notifications -->
 	<key>NSUserNotificationAlertStyle</key>
 	<string>alert</string>
+	
+	<!-- Photo Library Access for saving images -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>ŞiirArt şiir kartlarınızı galerinize kaydetmek için fotoğraf kitaplığı erişimine ihtiyaç duyuyor.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ŞiirArt şiir kartlarınızı galerinize kaydetmek için fotoğraf kitaplığı erişimine ihtiyaç duyuyor.</string>
 </dict>
 </plist>

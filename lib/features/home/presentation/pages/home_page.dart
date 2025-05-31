@@ -18,6 +18,7 @@ import 'package:poemapp/services/connectivity_service.dart';
 import 'package:poemapp/widgets/poet_info_widget.dart';
 import 'package:poemapp/widgets/error_widget.dart';
 import 'package:poemapp/features/mood/presentation/pages/mood_based_poem_page.dart';
+import 'dart:math' as math;
 
 // Restore the enum but keep it commented for reference
 enum TabSelection { discover, popular, newest }
@@ -1128,8 +1129,11 @@ class HomePage extends ConsumerWidget {
 
   // Update the _filterPoetsByTab method to just return all poets without filtering
   List<dynamic> _filterPoetsByTab(List<dynamic> poets, TabSelection tab) {
-    // No filtering - just return all poets
-    return poets;
+    // Create a copy of the list to avoid modifying the original
+    final shuffledPoets = List<dynamic>.from(poets);
+    // Shuffle the list to show poets in random order each time
+    shuffledPoets.shuffle(math.Random());
+    return shuffledPoets;
   }
 
   // Method to build tab selection button - keep for now but commented out
