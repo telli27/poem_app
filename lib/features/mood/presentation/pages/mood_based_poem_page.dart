@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:poemapp/core/theme/theme_provider.dart';
 import 'package:poemapp/features/home/providers/poem_provider.dart';
 import 'package:poemapp/features/poem/presentation/pages/poem_detail_page.dart';
+import 'package:poemapp/providers/ad_service_provider.dart';
 
 // Mood providers
 final selectedMoodProvider = StateProvider<String?>((ref) => null);
@@ -630,6 +631,9 @@ class MoodBasedPoemPage extends ConsumerWidget {
                   margin: const EdgeInsets.only(bottom: 8),
                   child: GestureDetector(
                     onTap: () {
+                      // Preload interstitial ad before navigation
+                      ref.read(adServiceProvider.notifier).loadInterstitialAd();
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(

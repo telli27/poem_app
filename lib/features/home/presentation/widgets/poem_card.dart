@@ -4,6 +4,7 @@ import 'package:poemapp/models/poem.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:poemapp/features/poem/presentation/pages/poem_detail_page.dart';
 import 'package:poemapp/features/home/providers/poet_provider.dart';
+import 'package:poemapp/providers/ad_service_provider.dart';
 
 class PoemCard extends ConsumerWidget {
   final Poem poem;
@@ -20,6 +21,9 @@ class PoemCard extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
+          // Preload interstitial ad before navigation
+          ref.read(adServiceProvider.notifier).loadInterstitialAd();
+
           Navigator.push(
             context,
             MaterialPageRoute(

@@ -5,6 +5,7 @@ import 'package:poemapp/features/poem/presentation/pages/poem_detail_page.dart';
 import 'package:poemapp/models/poem.dart';
 import 'package:poemapp/providers/favorites_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:poemapp/providers/ad_service_provider.dart';
 
 class FavoritesPage extends ConsumerWidget {
   const FavoritesPage({super.key});
@@ -109,6 +110,9 @@ class FavoritesPage extends ConsumerWidget {
   ) {
     return GestureDetector(
       onTap: () {
+        // Preload interstitial ad before navigation
+        ref.read(adServiceProvider.notifier).loadInterstitialAd();
+
         Navigator.push(
           context,
           MaterialPageRoute(

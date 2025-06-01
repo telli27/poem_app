@@ -10,6 +10,7 @@ import 'package:poemapp/features/daily_poem/presentation/pages/poem_calendar_pag
 import 'package:poemapp/features/daily_poem/presentation/pages/notification_settings_page.dart';
 import 'package:poemapp/features/home/providers/poet_provider.dart';
 import 'dart:ui';
+import 'package:poemapp/providers/ad_service_provider.dart';
 
 class DailyPoemPage extends ConsumerStatefulWidget {
   const DailyPoemPage({super.key});
@@ -331,6 +332,9 @@ class _DailyPoemPageState extends ConsumerState<DailyPoemPage> {
     return GestureDetector(
       onTap: () {
         _recordPoemRead();
+        // Preload interstitial ad before navigation
+        ref.read(adServiceProvider.notifier).loadInterstitialAd();
+
         Navigator.push(
           context,
           MaterialPageRoute(

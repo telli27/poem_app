@@ -19,6 +19,7 @@ import 'package:poemapp/widgets/poet_info_widget.dart';
 import 'package:poemapp/widgets/error_widget.dart';
 import 'package:poemapp/features/mood/presentation/pages/mood_based_poem_page.dart';
 import 'dart:math' as math;
+import 'package:poemapp/providers/ad_service_provider.dart';
 
 // Restore the enum but keep it commented for reference
 enum TabSelection { discover, popular, newest }
@@ -1088,6 +1089,9 @@ class HomePage extends ConsumerWidget {
       ),
       child: ListTile(
         onTap: () {
+          // Preload interstitial ad before navigation
+          ref.read(adServiceProvider.notifier).loadInterstitialAd();
+
           Navigator.push(
             context,
             MaterialPageRoute(

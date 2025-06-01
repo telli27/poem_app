@@ -8,6 +8,7 @@ import 'package:poemapp/features/poem/presentation/screens/poem_item_widget.dart
 import 'package:poemapp/providers/favorites_provider.dart';
 import 'package:poemapp/features/home/providers/poet_provider.dart';
 import 'package:poemapp/features/share/presentation/pages/poem_share_page.dart';
+import 'package:poemapp/providers/ad_service_provider.dart';
 
 // Add selection providers
 final selectedTextProvider = StateProvider<String>((ref) => '');
@@ -28,6 +29,19 @@ class PoemDetailPage extends ConsumerStatefulWidget {
 
 class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
   double _fontSize = 16.0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Show interstitial ad after page is loaded with a small delay
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          ref.read(adServiceProvider.notifier).showInterstitialAd();
+        }
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
