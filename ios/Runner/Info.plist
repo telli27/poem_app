@@ -62,5 +62,9 @@
 	<string>ŞiirArt şiir kartlarınızı galerinize kaydetmek için fotoğraf kitaplığı erişimine ihtiyaç duyuyor.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ŞiirArt şiir kartlarınızı galerinize kaydetmek için fotoğraf kitaplığı erişimine ihtiyaç duyuyor.</string>
+	
+	<!-- AdMob App ID for iOS -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3067922342709849~8580082570</string>
 </dict>
 </plist>

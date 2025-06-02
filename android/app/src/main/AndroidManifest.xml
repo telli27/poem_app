@@ -14,6 +14,12 @@
         android:label="poemapp"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        
+        <!-- AdMob App ID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3067922342709849~8580082570"/>
+            
         <activity
             android:name=".MainActivity"
             android:exported="true"
