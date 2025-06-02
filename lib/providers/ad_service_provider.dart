@@ -198,7 +198,7 @@ class AdServiceNotifier extends StateNotifier<AdServiceState> {
   }
 
   /// Load an interstitial ad
-  void loadInterstitialAd() {
+  Future<void> loadInterstitialAd() async {
     final config = state.config;
     if (config == null) {
       print("❌ LoadInterstitialAd: Config is null, cannot load ad");
@@ -215,7 +215,7 @@ class AdServiceNotifier extends StateNotifier<AdServiceState> {
 
     state = state.copyWith(isInterstitialAdLoading: true);
 
-    InterstitialAd.load(
+    await InterstitialAd.load(
       adUnitId: config.interstitialAdUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
@@ -234,50 +234,47 @@ class AdServiceNotifier extends StateNotifier<AdServiceState> {
     );
   }
 
-  /// Show interstitial ad
-  void showInterstitialAd() async {
-    final config = state.config;
-    if (config == null) return;
-
-    if (state.currentImpressionCount >= config.maxImpressions) {
-      print('Maximum ad impressions reached');
-      return;
-    }
-
+  /// Show the interstitial ad if it's loaded
+  Future<void> showInterstitialAd() async {
     if (state.interstitialAd == null) {
-      loadInterstitialAd();
+      print('❌ Interstitial ad not ready to show');
       return;
     }
 
-    state.interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (ad) async {
-        ad.dispose();
-        // Load next ad immediately
-        loadInterstitialAd();
-      },
-      onAdWillDismissFullScreenContent: (ad) {
-        log("onAdWillDismissFullScreenContent");
-      },
-      onAdShowedFullScreenContent: (ad) {
-        log("onAdShowedFullScreenContent");
-        state = state.copyWith(
-          currentImpressionCount: state.currentImpressionCount + 1,
-          interstitialAd: null,
-        );
-        log("currentImpressionCount: ${state.currentImpressionCount}");
-      },
-      onAdImpression: (ad) {
-        log("onAdImpression");
-      },
-      onAdFailedToShowFullScreenContent: (ad, error) {
-        print('Interstitial ad failed to show: $error');
-        ad.dispose();
-        state = state.copyWith(interstitialAd: null);
-        loadInterstitialAd();
-      },
-    );
+    try {
+      state.interstitialAd!.fullScreenContentCallback =
+          FullScreenContentCallback(
+        onAdDismissedFullScreenContent: (ad) {
+          log("onAdDismissedFullScreenContent");
+          ad.dispose();
+          state = state.copyWith(interstitialAd: null);
+          loadInterstitialAd(); // Load the next ad
+        },
+        onAdShowedFullScreenContent: (ad) {
+          log("onAdShowedFullScreenContent");
+          state = state.copyWith(
+            currentImpressionCount: state.currentImpressionCount + 1,
+          );
+          log("currentImpressionCount: ${state.currentImpressionCount}");
+        },
+        onAdImpression: (ad) {
+          log("onAdImpression");
+        },
+        onAdFailedToShowFullScreenContent: (ad, error) {
+          print('❌ Interstitial ad failed to show: $error');
+          ad.dispose();
+          state = state.copyWith(interstitialAd: null);
+          loadInterstitialAd();
+        },
+      );
 
-    state.interstitialAd!.show();
+      await state.interstitialAd!.show();
+    } catch (e) {
+      print('❌ Error showing interstitial ad: $e');
+      state.interstitialAd?.dispose();
+      state = state.copyWith(interstitialAd: null);
+      loadInterstitialAd();
+    }
   }
 
   /// Load a rewarded ad

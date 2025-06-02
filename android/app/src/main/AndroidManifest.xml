@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Required for notifications on Android 13+ -->
@@ -8,17 +9,21 @@
     <!-- Required for saving images to gallery -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <application
-        android:label="poemapp"
+        android:label="ŞiirArt"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         
         <!-- AdMob App ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3067922342709849~8580082570"/>
+            android:value="ca-app-pub-3940256099942544~3347511713"/>
+            
+        <!-- Add short description -->
+        <meta-data
+            android:name="com.google.android.play.store.short_description"
+            android:value="Günlük şiir keşfi, ruh halinize göre özel şiir önerileri ve zengin şair kütüphanesi."/>
             
         <activity
             android:name=".MainActivity"

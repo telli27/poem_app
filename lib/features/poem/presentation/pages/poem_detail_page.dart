@@ -35,7 +35,7 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
     super.initState();
     // Show interstitial ad after page is loaded with a small delay
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 800), () {
+      Future.delayed(const Duration(milliseconds: 1000)).then((_) {
         if (mounted) {
           _showInterstitialAdWithCheck();
         }
@@ -43,7 +43,7 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
     });
   }
 
-  void _showInterstitialAdWithCheck() {
+  Future<void> _showInterstitialAdWithCheck() async {
     final adState = ref.read(adServiceProvider);
     print("🎯 PoemDetailPage - Ad service state check:");
     print("  - Is initialized: ${adState.isInitialized}");
@@ -53,13 +53,8 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
     print("  - Has interstitial ad: ${adState.interstitialAd != null}");
     print("  - Is loading interstitial: ${adState.isInterstitialAdLoading}");
 
-    if (!adState.isInitialized) {
-      print("❌ Ad service not initialized yet");
-      return;
-    }
-
-    if (adState.config == null) {
-      print("❌ Ad config not loaded yet");
+    if (!adState.isInitialized || adState.config == null) {
+      print("❌ Ad service not initialized or config not loaded");
       return;
     }
 
@@ -71,27 +66,24 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
       return;
     }
 
+    // If no ad is loaded and not currently loading, start loading
     if (adState.interstitialAd == null && !adState.isInterstitialAdLoading) {
-      print("📲 Loading interstitial ad first...");
-      ref.read(adServiceProvider.notifier).loadInterstitialAd();
+      print("📲 Loading interstitial ad...");
+      await ref.read(adServiceProvider.notifier).loadInterstitialAd();
+    }
 
-      // Wait for ad to load then try again
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          final newState = ref.read(adServiceProvider);
-          if (newState.interstitialAd != null) {
-            print("✅ Interstitial ad loaded, showing now...");
-            ref.read(adServiceProvider.notifier).showInterstitialAd();
-          } else {
-            print("❌ Interstitial ad still not loaded after 2 seconds");
-          }
-        }
-      });
-    } else if (adState.interstitialAd != null) {
-      print("✅ Showing interstitial ad...");
-      ref.read(adServiceProvider.notifier).showInterstitialAd();
-    } else {
-      print("⏳ Interstitial ad is currently loading...");
+    // Wait a bit for the ad to potentially load
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    // Check if we're still mounted and try to show the ad
+    if (mounted) {
+      final currentState = ref.read(adServiceProvider);
+      if (currentState.interstitialAd != null) {
+        print("✅ Showing interstitial ad...");
+        await ref.read(adServiceProvider.notifier).showInterstitialAd();
+      } else {
+        print("❌ Interstitial ad not ready after loading attempt");
+      }
     }
   }
 

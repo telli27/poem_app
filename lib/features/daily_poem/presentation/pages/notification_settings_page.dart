@@ -568,6 +568,7 @@ class _NotificationSettingsPageState
             ),
             const SizedBox(height: 20),
 
+          /*
             // Test Buttons Section
             Animate(
               effects: const [
@@ -713,6 +714,7 @@ class _NotificationSettingsPageState
                 ),
               ),
             ),
+            */
           ]
         ],
       ),
