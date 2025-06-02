@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'siirart.firebasestorage.app',
     measurementId: 'G-MJFYB28K20',
   );
+
 }

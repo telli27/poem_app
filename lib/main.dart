@@ -16,7 +16,9 @@ import 'package:poemapp/features/poem/presentation/pages/poem_detail_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 import 'firebase_options.dart';
+import 'package:poemapp/providers/ad_service_provider.dart';
 
 // Global navigator key for navigation from notifications
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -29,18 +31,37 @@ final appStartTimeProvider = Provider<int>((ref) {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('✅ Firebase initialized successfully');
+  } catch (e) {
+    print('❌ Firebase initialization failed: $e');
+    // Continue running without Firebase for now
+  }
 
-  // Initialize Hive for favorites
-  await FavoritesService.init();
+  // Initialize services with error handling
+  try {
+    await FavoritesService.init();
+    print('✅ FavoritesService initialized successfully');
+  } catch (e) {
+    print('❌ FavoritesService initialization failed: $e');
+  }
 
-  // Initialize Daily Poem Service
-  await DailyPoemService.init();
+  try {
+    await DailyPoemService.init();
+    print('✅ DailyPoemService initialized successfully');
+  } catch (e) {
+    print('❌ DailyPoemService initialization failed: $e');
+  }
 
-  // Initialize Notification Service
-  await NotificationService.init();
+  try {
+    await NotificationService.init();
+    print('✅ NotificationService initialized successfully');
+  } catch (e) {
+    print('❌ NotificationService initialization failed: $e');
+  }
 
   // Setup notification tap handler
   DailyPoemService.onNotificationTap = (String? payload) {
@@ -214,97 +235,111 @@ class _MyAppState extends ConsumerState<MyApp> {
       // ApiService ile data kontrolü
       final apiService = ApiService();
 
-      // Önce cache'de veri var mı kontrol et
-      final prefs = await SharedPreferences.getInstance();
-      final hasCachedPoets = prefs.containsKey('cached_poets_data');
-      final hasCachedPoems = prefs.containsKey('cached_poems_data');
-
-      // Check if last data load was too long ago (more than 1 day)
-      final lastUpdated = prefs.getInt('data_last_updated') ?? 0;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final dayInMillis = 24 * 60 * 60 * 1000;
-      final forceRefresh = (now - lastUpdated) > dayInMillis;
-
-      if (forceRefresh) {
-        print("⚡ Son güncelleme çok eski, veriler yenilenecek");
-      }
-
-      // Check if there might be corrupted data
-      bool potentiallyCorruptedData = false;
-      if (hasCachedPoets || hasCachedPoems) {
-        try {
-          // Try to parse cached data to check for corruption
-          if (hasCachedPoets) {
-            final poetData = prefs.getString('cached_poets_data');
-            if (poetData != null) {
-              json.decode(poetData);
-            }
-          }
-          if (hasCachedPoems) {
-            final poemData = prefs.getString('cached_poems_data');
-            if (poemData != null) {
-              json.decode(poemData);
-            }
-          }
-        } catch (e) {
-          print("❌ Cache verisi bozulmuş olabilir: $e");
-          potentiallyCorruptedData = true;
-        }
-      }
-
-      // Eğer cache'de veri yoksa, veri bozulmuşsa veya cebri yenileme gerekiyorsa
-      if (!hasCachedPoets ||
-          !hasCachedPoems ||
-          potentiallyCorruptedData ||
-          forceRefresh) {
-        if (potentiallyCorruptedData) {
-          print("⚡ Bozuk cache tespit edildi, veriler temizlenecek");
-          await apiService.clearCache();
-        }
-
-        _safeSetState(refreshDataProvider, true);
-        print("⚡ Cache'de veri bulunamadı, veriler yüklenecek");
-      } else {
-        // Var olan veriler üzerinde güncellemeler kontrol ediliyor
-        final needsUpdate = await apiService.checkAndUpdateData();
-
-        if (needsUpdate && mounted) {
-          _safeSetState(refreshDataProvider, true);
-          print("⚡ Veri güncellendi, yenileme tetiklendi");
-        } else {
-          print("⚡ Veriler güncel, yenileme gerekmiyor");
-        }
-      }
-
-      // Perform an update of poet and poem count metadata
-      await apiService.getCachedPoetInfo();
-      await apiService.getCachedPoemInfo();
-
-      // Force refresh the info providers after data is potentially loaded
-      if (mounted) {
-        // Invalidate info providers to get updated counts
-        ref.invalidate(poetInfoProvider);
-        ref.invalidate(poemInfoProvider);
-        print("⚡ Info provider'ları yenilendi");
-      }
+      // Timeout ile sınırlı veri kontrolü
+      await _performDataCheck().timeout(
+        const Duration(seconds: 10), // 10 saniye timeout
+      );
+    } on TimeoutException {
+      print("⚠️ Veri kontrolü zaman aşımı - uygulama yine de açılacak");
     } catch (e) {
       print("❌ Veri kontrolünde hata: $e");
-
-      // If there's an error during data initialization, ensure we don't leave the
-      // user with a permanent loading indicator
-      if (mounted) {
-        _safeSetState(poetStartupLoadingProvider, false);
-        _safeSetState(poemStartupLoadingProvider, false);
-      }
+      // Uygulama yine de açılabilir, sadece varsayılan verilerle
     } finally {
       // Her durumda loading göstergesini kapat
       if (mounted) {
         Future.delayed(const Duration(milliseconds: 500), () {
-          _safeSetState(poetStartupLoadingProvider, false);
-          _safeSetState(poemStartupLoadingProvider, false);
-          print("⚡ Yükleme göstergesi kapatıldı");
+          if (mounted) {
+            _safeSetState(poetStartupLoadingProvider, false);
+            _safeSetState(poemStartupLoadingProvider, false);
+            print("⚡ Yükleme göstergesi kapatıldı");
+          }
         });
       }
+    }
+  }
+
+  Future<void> _performDataCheck() async {
+    // ApiService ile data kontrolü
+    final apiService = ApiService();
+
+    // Önce cache'de veri var mı kontrol et
+    final prefs = await SharedPreferences.getInstance();
+    final hasCachedPoets = prefs.containsKey('cached_poets_data');
+    final hasCachedPoems = prefs.containsKey('cached_poems_data');
+
+    // Check if last data load was too long ago (more than 1 day)
+    final lastUpdated = prefs.getInt('data_last_updated') ?? 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final dayInMillis = 24 * 60 * 60 * 1000;
+    final forceRefresh = (now - lastUpdated) > dayInMillis;
+
+    if (forceRefresh) {
+      print("⚡ Son güncelleme çok eski, veriler yenilenecek");
+    }
+
+    // Check if there might be corrupted data
+    bool potentiallyCorruptedData = false;
+    if (hasCachedPoets || hasCachedPoems) {
+      try {
+        // Try to parse cached data to check for corruption
+        if (hasCachedPoets) {
+          final poetData = prefs.getString('cached_poets_data');
+          if (poetData != null) {
+            json.decode(poetData);
+          }
+        }
+        if (hasCachedPoems) {
+          final poemData = prefs.getString('cached_poems_data');
+          if (poemData != null) {
+            json.decode(poemData);
+          }
+        }
+      } catch (e) {
+        print("❌ Cache verisi bozulmuş olabilir: $e");
+        potentiallyCorruptedData = true;
+      }
+    }
+
+    // Eğer cache'de veri yoksa, veri bozulmuşsa veya cebri yenileme gerekiyorsa
+    if (!hasCachedPoets ||
+        !hasCachedPoems ||
+        potentiallyCorruptedData ||
+        forceRefresh) {
+      if (potentiallyCorruptedData) {
+        print("⚡ Bozuk cache tespit edildi, veriler temizlenecek");
+        await apiService.clearCache();
+      }
+
+      if (mounted) {
+        _safeSetState(refreshDataProvider, true);
+        print("⚡ Cache'de veri bulunamadı, veriler yüklenecek");
+      }
+    } else {
+      // Var olan veriler üzerinde güncellemeler kontrol ediliyor
+      final needsUpdate = await apiService.checkAndUpdateData();
+
+      if (needsUpdate && mounted) {
+        _safeSetState(refreshDataProvider, true);
+        print("⚡ Veri güncellendi, yenileme tetiklendi");
+      } else {
+        print("⚡ Veriler güncel, yenileme gerekmiyor");
+      }
+    }
+
+    // Perform an update of poet and poem count metadata
+    try {
+      await apiService.getCachedPoetInfo();
+      await apiService.getCachedPoemInfo();
+    } catch (e) {
+      print("⚠️ Metadata güncelleme hatası: $e");
+    }
+
+    // Force refresh the info providers after data is potentially loaded
+    if (mounted) {
+      // Invalidate info providers to get updated counts
+      ref.invalidate(poetInfoProvider);
+      ref.invalidate(poemInfoProvider);
+      print("⚡ Info provider'ları yenilendi");
     }
   }
 
@@ -312,6 +347,9 @@ class _MyAppState extends ConsumerState<MyApp> {
   Widget build(BuildContext context) {
     // Connectivity servisi başlat
     ref.read(connectivityServiceProvider);
+
+    // Initialize ad service
+    ref.read(adServiceProvider);
 
     // Register the provider listeners to handle refresh state safely
     ref.read(poetProviderListener);
@@ -321,7 +359,7 @@ class _MyAppState extends ConsumerState<MyApp> {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
-      title: 'Türk Şiirleri',
+      title: 'ŞiirArt',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

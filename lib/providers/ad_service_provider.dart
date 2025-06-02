@@ -75,32 +75,43 @@ class AdServiceNotifier extends StateNotifier<AdServiceState> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   AdServiceNotifier() : super(const AdServiceState()) {
+    print("🚀 AdServiceNotifier constructor called");
     initializeAds();
   }
 
   /// Initialize Google Mobile Ads SDK
   Future<void> initializeAds() async {
+    print("🚀 AdService: Starting initialization...");
     try {
+      print("🚀 AdService: Initializing MobileAds SDK...");
       await MobileAds.instance.initialize();
+      print("✅ AdService: MobileAds SDK initialized");
+
+      print("🚀 AdService: Fetching ad data from Firebase...");
       await _fetchAdData();
+
       state = state.copyWith(isInitialized: true);
+      print("✅ AdService: Initialization completed successfully");
     } catch (e) {
+      print('❌ AdService: Error initializing ads: $e');
       log('Error initializing ads: $e');
     }
   }
 
   /// Firestore'dan reklam verisini al
   Future<void> _fetchAdData() async {
-    log("_fetchAdData* * * * * ");
+    log("🔥 _fetchAdData: Starting to fetch ad data from Firestore");
     try {
+      print("🔥 Fetching ad document from Firestore...");
       DocumentSnapshot adDoc =
           await _firestore.collection('Ads').doc('ad_1').get();
 
       if (adDoc.exists) {
-        log("adDoc* * $adDoc");
+        print("✅ Ad document found in Firestore");
+        log("adDoc data: ${adDoc.data()}");
 
         int maxImpressions = adDoc['maxImpression'];
-        log("maxImpression* * $maxImpressions");
+        print("📊 Max impressions: $maxImpressions");
 
         // Test ve gerçek reklam ID'lerini al
         String testBannerAdUnitId = adDoc['testBannerAdUnitId'];
@@ -110,6 +121,8 @@ class AdServiceNotifier extends StateNotifier<AdServiceState> {
         String testRewardedAdUnitId = adDoc['testRewardedAdUnitId'];
         String realRewardedAdUnitId = adDoc['realRewardedAdUnitId'];
         String platform = adDoc['platform'];
+
+        print("🎯 Platform setting: $platform");
 
         // Platforma göre uygun reklam ID'sini seç
         String bannerAdUnitId = Platform.isAndroid
@@ -140,19 +153,25 @@ class AdServiceNotifier extends StateNotifier<AdServiceState> {
 
         state = state.copyWith(config: config);
 
-        print('Ad configuration loaded successfully');
-        print('Banner Ad Unit ID: $bannerAdUnitId');
-        print('Interstitial Ad Unit ID: $interstitialAdUnitId');
-        print('Rewarded Ad Unit ID: $rewardedAdUnitId');
+        print('✅ Ad configuration loaded successfully');
+        print('📱 Platform: ${Platform.isAndroid ? "Android" : "iOS"}');
+        print('🎯 Using ${platform} ad IDs');
+        print('🔥 Banner Ad Unit ID: $bannerAdUnitId');
+        print('🔥 Interstitial Ad Unit ID: $interstitialAdUnitId');
+        print('🔥 Rewarded Ad Unit ID: $rewardedAdUnitId');
+        print('📊 Max impressions: $maxImpressions');
 
         // Preload initial ads
+        print("🚀 Preloading initial ads...");
         loadInterstitialAd();
         loadRewardedAd();
       } else {
+        print("❌ Ad document not found in Firestore");
         log("Ad data not found in Firestore");
       }
     } catch (e) {
-      print('Firebase error: $e');
+      print('❌ Firebase error while fetching ad data: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
     }
   }
 
@@ -181,9 +200,18 @@ class AdServiceNotifier extends StateNotifier<AdServiceState> {
   /// Load an interstitial ad
   void loadInterstitialAd() {
     final config = state.config;
-    if (config == null) return;
+    if (config == null) {
+      print("❌ LoadInterstitialAd: Config is null, cannot load ad");
+      return;
+    }
 
-    if (state.isInterstitialAdLoading || state.interstitialAd != null) return;
+    if (state.isInterstitialAdLoading || state.interstitialAd != null) {
+      print("⏭️ LoadInterstitialAd: Ad already loading or loaded, skipping");
+      return;
+    }
+
+    print("🚀 LoadInterstitialAd: Starting to load interstitial ad...");
+    print("🔥 Using ad unit ID: ${config.interstitialAdUnitId}");
 
     state = state.copyWith(isInterstitialAdLoading: true);
 
@@ -196,10 +224,10 @@ class AdServiceNotifier extends StateNotifier<AdServiceState> {
             interstitialAd: ad,
             isInterstitialAdLoading: false,
           );
-          print('Interstitial ad loaded.');
+          print('✅ LoadInterstitialAd: Interstitial ad loaded successfully!');
         },
         onAdFailedToLoad: (error) {
-          print('Interstitial ad failed to load: $error');
+          print('❌ LoadInterstitialAd: Interstitial ad failed to load: $error');
           state = state.copyWith(isInterstitialAdLoading: false);
         },
       ),
@@ -312,6 +340,55 @@ class AdServiceNotifier extends StateNotifier<AdServiceState> {
     state.rewardedAd!.show(
       onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
         log("User earned reward: ${reward.amount} ${reward.type}");
+        rewardEarned = true;
+        rewardEarnedChanged(true);
+      },
+    );
+
+    return completer.future;
+  }
+
+  /// Show rewarded ad for special actions (like downloading card) without impression limit
+  Future<bool> showRewardedAdForSpecialAction({
+    required ValueChanged<bool?> rewardEarnedChanged,
+    String actionType = "download",
+  }) async {
+    if (state.rewardedAd == null) {
+      await loadRewardedAd();
+      // Wait a bit for the ad to load if it wasn't ready
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // If still not loaded, return false
+      if (state.rewardedAd == null) {
+        print('Rewarded ad not ready for special action: $actionType');
+        return false;
+      }
+    }
+
+    final completer = Completer<bool>();
+    bool rewardEarned = false;
+
+    state.rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        state = state.copyWith(rewardedAd: null);
+        loadRewardedAd(); // Load next rewarded ad
+        completer.complete(rewardEarned);
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        print('Rewarded ad failed to show for $actionType: $error');
+        ad.dispose();
+        state = state.copyWith(rewardedAd: null);
+        completer.complete(false);
+      },
+      onAdShowedFullScreenContent: (ad) {
+        log("Rewarded ad shown for action: $actionType");
+      },
+    );
+
+    state.rewardedAd!.show(
+      onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
+        log("User earned reward for $actionType: ${reward.amount} ${reward.type}");
         rewardEarned = true;
         rewardEarnedChanged(true);
       },

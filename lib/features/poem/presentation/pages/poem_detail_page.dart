@@ -35,12 +35,64 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
     super.initState();
     // Show interstitial ad after page is loaded with a small delay
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 500), () {
+      Future.delayed(const Duration(milliseconds: 800), () {
         if (mounted) {
-          ref.read(adServiceProvider.notifier).showInterstitialAd();
+          _showInterstitialAdWithCheck();
         }
       });
     });
+  }
+
+  void _showInterstitialAdWithCheck() {
+    final adState = ref.read(adServiceProvider);
+    print("🎯 PoemDetailPage - Ad service state check:");
+    print("  - Is initialized: ${adState.isInitialized}");
+    print("  - Has config: ${adState.config != null}");
+    print("  - Current impressions: ${adState.currentImpressionCount}");
+    print("  - Max impressions: ${adState.config?.maxImpressions ?? 0}");
+    print("  - Has interstitial ad: ${adState.interstitialAd != null}");
+    print("  - Is loading interstitial: ${adState.isInterstitialAdLoading}");
+
+    if (!adState.isInitialized) {
+      print("❌ Ad service not initialized yet");
+      return;
+    }
+
+    if (adState.config == null) {
+      print("❌ Ad config not loaded yet");
+      return;
+    }
+
+    // Check impression limit
+    if (adState.currentImpressionCount >=
+        (adState.config?.maxImpressions ?? 0)) {
+      print(
+          "❌ Impression limit reached: ${adState.currentImpressionCount}/${adState.config?.maxImpressions}");
+      return;
+    }
+
+    if (adState.interstitialAd == null && !adState.isInterstitialAdLoading) {
+      print("📲 Loading interstitial ad first...");
+      ref.read(adServiceProvider.notifier).loadInterstitialAd();
+
+      // Wait for ad to load then try again
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          final newState = ref.read(adServiceProvider);
+          if (newState.interstitialAd != null) {
+            print("✅ Interstitial ad loaded, showing now...");
+            ref.read(adServiceProvider.notifier).showInterstitialAd();
+          } else {
+            print("❌ Interstitial ad still not loaded after 2 seconds");
+          }
+        }
+      });
+    } else if (adState.interstitialAd != null) {
+      print("✅ Showing interstitial ad...");
+      ref.read(adServiceProvider.notifier).showInterstitialAd();
+    } else {
+      print("⏳ Interstitial ad is currently loading...");
+    }
   }
 
   @override
@@ -747,6 +799,9 @@ class _PoemDetailPageState extends ConsumerState<PoemDetailPage> {
               right: 20,
               child: GestureDetector(
                 onTap: () {
+                  // Preload rewarded ad before navigation
+                  ref.read(adServiceProvider.notifier).loadRewardedAd();
+
                   // Create modified poem with selected text
                   final modifiedPoem = Poem(
                     id: widget.poem.id,

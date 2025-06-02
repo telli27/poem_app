@@ -8,9 +8,10 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:poemapp/features/home/providers/poet_provider.dart';
 import 'dart:math' as math;
+import 'package:poemapp/providers/ad_service_provider.dart';
+import 'package:saver_gallery/saver_gallery.dart';
 
 // Share card theme provider
 final shareCardThemeProvider = StateProvider<int>((ref) => 0);
@@ -30,6 +31,15 @@ class PoemSharePage extends ConsumerStatefulWidget {
 class _PoemSharePageState extends ConsumerState<PoemSharePage> {
   final GlobalKey _cardKey = GlobalKey();
   bool _isGeneratingImage = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Preload rewarded ad when page opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(adServiceProvider.notifier).loadRewardedAd();
+    });
+  }
 
   // Predefined themes for share cards
   final List<ShareCardTheme> themes = [
@@ -1742,31 +1752,27 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
       String? errorMsg;
 
       try {
-        final result = await ImageGallerySaver.saveImage(
+        final result = await SaverGallery.saveImage(
           imageBytes,
           quality: 100,
           name: "ŞiirArt_${DateTime.now().millisecondsSinceEpoch}",
-          isReturnImagePathOfIOS: true,
+          androidRelativePath: "Pictures/ŞiirArt",
+          androidExistNotSave: false,
         );
 
         print("Save result: $result");
         print("Result type: ${result.runtimeType}");
 
-        if (result != null) {
-          if (result is Map) {
-            success = result['isSuccess'] == true;
-            errorMsg = result['errorMessage']?.toString();
-            print("Map result - success: $success, error: $errorMsg");
-          } else if (result is String) {
-            success = result.isNotEmpty;
-            print("String result: $result");
-          } else {
-            success = true;
-            print("Other result type, assuming success");
-          }
+        if (result.isSuccess) {
+          success = true;
+          print("Save successful");
+        } else {
+          success = false;
+          errorMsg = result.errorMessage;
+          print("Save failed: $errorMsg");
         }
       } catch (saveError) {
-        print("ImageGallerySaver error: $saveError");
+        print("SaverGallery error: $saveError");
         errorMsg = saveError.toString();
       }
 
@@ -1779,6 +1785,11 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
         // Show preview dialog
         Future.delayed(const Duration(milliseconds: 500), () {
           _showSavedImageDialog(imageBytes);
+        });
+
+        // Show rewarded ad after successful download
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          _showRewardedAdForDownload();
         });
 
         // iOS için extra kontrol - Gerçekten kaydedildi mi?
@@ -2070,6 +2081,106 @@ class _PoemSharePageState extends ConsumerState<PoemSharePage> {
       _showSnackBar("✅ Paylaşım başlatıldı!");
     } catch (e) {
       _showSnackBar("❌ Paylaşım hatası: $e");
+    }
+  }
+
+  void _showRewardedAdForDownload() {
+    // Check if rewarded ad is ready
+    final isRewardedAdReady = ref.read(adServiceProvider).rewardedAd != null;
+
+    if (!isRewardedAdReady) {
+      print("Rewarded ad not ready for download");
+      // Preload for next time
+      ref.read(adServiceProvider.notifier).loadRewardedAd();
+      return;
+    }
+
+    // Show info dialog first
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2D2D3F),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          "📱 İndirme Tamamlandı!",
+          style: TextStyle(color: Colors.white, fontSize: 18),
+          textAlign: TextAlign.center,
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "Şiir kartınız başarıyla kaydedildi! 🎉\n\nUygulama gelişimini desteklemek için kısa bir reklam izlemek ister misiniz?",
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 16),
+            Text(
+              "💡 Bu, uygulamanın ücretsiz kalmasına yardımcı olur",
+              style: TextStyle(color: Colors.amber, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Load another rewarded ad for next time
+              ref.read(adServiceProvider.notifier).loadRewardedAd();
+            },
+            child: const Text(
+              "Şimdi Değil",
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              _showRewardedAd();
+            },
+            icon: const Icon(Icons.play_arrow, size: 18),
+            label: const Text("Reklamı İzle"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7986CB),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRewardedAd() async {
+    try {
+      _showSnackBar("🎬 Reklam yükleniyor...");
+
+      final rewardEarned = await ref
+          .read(adServiceProvider.notifier)
+          .showRewardedAdForSpecialAction(
+            rewardEarnedChanged: (earned) {
+              if (earned == true) {
+                _showSnackBar(
+                    "🎉 Teşekkürler! Uygulamayı desteklediğiniz için minnettarız");
+              }
+            },
+            actionType: "card_download",
+          );
+
+      if (!rewardEarned) {
+        _showSnackBar("Reklam şu anda kullanılamıyor");
+        // Load another rewarded ad for next time
+        ref.read(adServiceProvider.notifier).loadRewardedAd();
+      }
+    } catch (e) {
+      print("Error showing rewarded ad: $e");
+      _showSnackBar("Reklam gösterilirken hata oluştu");
+      // Load another rewarded ad for next time
+      ref.read(adServiceProvider.notifier).loadRewardedAd();
     }
   }
 }
